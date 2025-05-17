@@ -1,0 +1,7 @@
+.cache
+.vscode
+out
+backup
+
+CMakePresets.json
+compile_commands.json
