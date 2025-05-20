@@ -6,6 +6,7 @@
 
 int main(void) {
     struct editorConfig *conf = malloc(sizeof(struct editorConfig));
+
     if (!conf) return -1;
 
     editor_create(conf);

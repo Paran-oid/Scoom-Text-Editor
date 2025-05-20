@@ -7,8 +7,12 @@
 struct editorConfig {
     struct termios termios;
 
-    size_t screen_rows;
-    size_t screen_cols;
+    int screen_rows;
+    int screen_cols;
 };
 
+struct abuf {
+    char *buf;
+    size_t len;
+};
 #endif
