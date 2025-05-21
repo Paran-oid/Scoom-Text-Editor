@@ -17,7 +17,8 @@ int ab_free(struct abuf *ab);
 int editor_refresh_screen(struct editorConfig *conf);
 int editor_draw_rows(struct editorConfig *conf, struct abuf *ab);
 
-char editor_read_key(void);
-int editor_process_key_press(void);
+void editor_cursor_move(struct editorConfig *conf, int key);
+int editor_read_key(void);
+int editor_process_key_press(struct editorConfig *conf);
 
 #endif

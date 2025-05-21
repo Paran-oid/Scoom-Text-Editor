@@ -13,7 +13,7 @@ int main(void) {
     term_create(conf);
     while (1) {
         editor_refresh_screen(conf);
-        editor_process_key_press();
+        editor_process_key_press(conf);
     }
 
     free(conf);
