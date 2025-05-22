@@ -11,7 +11,10 @@
 #include "inout.h"
 #include "objects.h"
 
-// usage of each macro can be understood in termios.h docs
+/*
+        usage of each macro (BRKINT, ICRNL, INPCK, ...) can be understood in
+        termios.h docs
+*/
 
 // TCSAFLUSH: flushes before leaving the program
 
@@ -20,12 +23,18 @@ void die(const char* s) {
     exit(1);
 }
 
-void term_create(struct editorConfig* conf) {
+void term_create(struct Config* conf) {
     if (tcgetattr(STDIN_FILENO, &conf->termios) == -1) {
         die("tcgetattr");
     }
-    temp = malloc(sizeof(struct editorConfig));
-    memcpy(temp, conf, sizeof(struct editorConfig));
+
+    /*
+        Since you can't pass any parameter for a function pointer in atexit,
+       I decided to create a temp void* pointer in which I will pass the conf so
+       that the terminal can be reset. Risky but possible
+    */
+    temp = malloc(sizeof(struct Config));
+    memcpy(temp, conf, sizeof(struct Config));
     atexit(term_exit);
 
     conf->termios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
@@ -46,12 +55,12 @@ void term_create(struct editorConfig* conf) {
 
 void term_exit(void) {
     if (!temp || tcsetattr(STDIN_FILENO, TCSAFLUSH,
-                           &((struct editorConfig*)temp)->termios) == -1) {
+                           &((struct Config*)temp)->termios) == -1) {
         die("tcsetattr");
     }
 }
 
-int term_get_window_size(struct editorConfig* conf, int* rows, int* cols) {
+int term_get_window_size(struct Config* conf, int* rows, int* cols) {
     struct winsize ws;
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
         // idea:
@@ -71,11 +80,11 @@ int term_get_window_size(struct editorConfig* conf, int* rows, int* cols) {
     }
 }
 
-int term_get_cursor_position(struct editorConfig* conf, int* rows, int* cols) {
-    // Command from host – Please report active position (using a CPR control
-    // sequence)
+int term_get_cursor_position(struct Config* conf, int* rows, int* cols) {
     size_t i = 0;
     char buf[32];
+    // Command from host (\x1b[6n) – Please report active position (using a CPR
+    // control sequence)
     if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
 
     // result example: <esc>[rows;colsR

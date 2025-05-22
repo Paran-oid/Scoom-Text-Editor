@@ -6,7 +6,13 @@
 
 #define SCOOM_VERSION 0.01
 
-struct editorConfig {
+// editor row
+struct e_row {
+    char* chars;
+    size_t size;
+};
+
+struct Config {
     struct termios termios;
 
     // cursor positions;
@@ -15,13 +21,30 @@ struct editorConfig {
 
     int screen_rows;
     int screen_cols;
+
+    // for text management
+    struct e_row* rows;
+    int num_rows;
 };
 
+// appending buffer
 struct abuf {
-    char *buf;
-    size_t len;
+    char* buf;
+    int len;
 };
 
-enum EditorKey { ARROW_UP = 1000, ARROW_DOWN, ARROW_RIGHT, ARROW_LEFT };
+enum EditorKey {
+    ARROW_UP = 1000,
+    ARROW_DOWN,
+    ARROW_RIGHT,
+    ARROW_LEFT,
+
+    PAGE_UP,
+    PAGE_DOWN,
+
+    HOME_KEY,
+    DEL_KEY,
+    END_KEY
+};
 
 #endif

@@ -9,9 +9,14 @@
 #include "objects.h"
 #include "terminal.h"
 
-int editor_create(struct editorConfig *conf) {
+/***  Misc ***/
+
+int editor_create(struct Config *conf) {
     conf->cx = 0;
     conf->cy = 0;
+
+    conf->num_rows = 0;
+    conf->rows = NULL;
 
     if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
         0) {
@@ -19,6 +24,8 @@ int editor_create(struct editorConfig *conf) {
     }
     return 0;
 }
+
+/***  Appending buffer section ***/
 
 int ab_append(struct abuf *ab, const char *s, size_t slen) {
     char *new = realloc(ab->buf, sizeof(char) * (ab->len + slen));
@@ -36,7 +43,9 @@ int ab_free(struct abuf *ab) {
     return 0;
 }
 
-int editor_refresh_screen(struct editorConfig *conf) {
+/***  Screen display and rendering section ***/
+
+int editor_refresh_screen(struct Config *conf) {
     struct abuf ab = ABUF_INIT;
     ab_append(&ab, "\x1b[?25l", 6);
     ab_append(&ab, "\x1b[H", 3);  // move top left
@@ -60,29 +69,36 @@ int editor_refresh_screen(struct editorConfig *conf) {
     return 0;
 }
 
-int editor_draw_rows(struct editorConfig *conf, struct abuf *ab) {
+int editor_draw_rows(struct Config *conf, struct abuf *ab) {
     for (size_t y = 0; y < conf->screen_rows; y++) {
-        if (y == conf->screen_rows / 3) {
-            char buf[100];
-            int welcome_len =
-                snprintf(buf, sizeof(buf), "Welcome to version %.2lf of Scoom!",
-                         SCOOM_VERSION);
+        if (y >= conf->num_rows) {
+            if (conf->num_rows == 0 && y == conf->screen_rows / 3) {
+                char buf[100];
+                int welcome_len = snprintf(buf, sizeof(buf),
+                                           "Welcome to version %.2lf of Scoom!",
+                                           SCOOM_VERSION);
 
-            if (welcome_len > conf->screen_cols)
-                welcome_len = conf->screen_cols;
+                if (welcome_len > conf->screen_cols)
+                    welcome_len = conf->screen_cols;
 
-            int padding = (conf->screen_cols - welcome_len) / 2;
-            if (padding) {
+                int padding = (conf->screen_cols - welcome_len) / 2;
+                if (padding) {
+                    ab_append(ab, "~", 1);
+                    padding--;
+                }
+
+                while (padding--) ab_append(ab, " ", 1);
+
+                ab_append(ab, buf, welcome_len);
+            } else {
                 ab_append(ab, "~", 1);
-                padding--;
             }
-
-            while (padding--) ab_append(ab, " ", 1);
-
-            ab_append(ab, buf, welcome_len);
         } else {
-            ab_append(ab, "~", 1);
+            int len = conf->rows[y].size;
+            if (len > conf->screen_cols) len = conf->screen_cols;
+            ab_append(ab, conf->rows[y].chars, len);
         }
+
         ab_append(ab, "\x1b[K", 4);  // erase in line command
         if (y < conf->screen_rows - 1) {
             ab_append(ab, "\r\n", 2);
@@ -92,7 +108,9 @@ int editor_draw_rows(struct editorConfig *conf, struct abuf *ab) {
     return 0;
 }
 
-void editor_cursor_move(struct editorConfig *conf, int key) {
+/***  Cursor movement section ***/
+
+void editor_cursor_move(struct Config *conf, int key) {
     switch (key) {
         case ARROW_LEFT:
             if (conf->cx != 0) conf->cx--;
@@ -109,6 +127,8 @@ void editor_cursor_move(struct editorConfig *conf, int key) {
     }
 }
 
+/***  Key processing section ***/
+
 int editor_read_key(void) {
     char c;
     int nread;
@@ -121,6 +141,25 @@ int editor_read_key(void) {
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
         if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
         if (seq[0] == '[') {
+            if ('0' <= seq[1] && seq[1] <= '9') {
+                if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
+                if (seq[2] == '~') {
+                    switch (seq[1]) {
+                        case '1':
+                        case '7':
+                            return HOME_KEY;
+                        case '3':
+                            return DEL_KEY;
+                        case '4':
+                        case '8':
+                            return END_KEY;
+                        case '5':
+                            return PAGE_UP;
+                        case '6':
+                            return PAGE_DOWN;
+                    }
+                }
+            }
             switch (seq[1]) {
                 case 'A':
                     return ARROW_UP;
@@ -130,6 +169,19 @@ int editor_read_key(void) {
                     return ARROW_RIGHT;
                 case 'D':
                     return ARROW_LEFT;
+                case 'H':
+                    return HOME_KEY;
+                case 'F':
+                    return END_KEY;
+            }
+        } else if (seq[0] == 'O') {
+            switch (seq[1]) {
+                case 'H':
+                    return HOME_KEY;
+                    break;
+                case 'F':
+                    return END_KEY;
+                    break;
             }
         } else {
             return '\x1b';
@@ -139,7 +191,7 @@ int editor_read_key(void) {
     }
 }
 
-int editor_process_key_press(struct editorConfig *conf) {
+int editor_process_key_press(struct Config *conf) {
     /*
                 Side Note:
                         We use int c instead of char c since we have mapped some
@@ -154,6 +206,19 @@ int editor_process_key_press(struct editorConfig *conf) {
         case ARROW_RIGHT:
         case ARROW_LEFT:
             editor_cursor_move(conf, c);
+            break;
+        case PAGE_UP:
+        case PAGE_DOWN:
+            int times = conf->screen_rows;
+            while (times--) {
+                editor_cursor_move(conf, c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+            }
+            break;
+        case HOME_KEY:
+            conf->cx = 0;
+            break;
+        case END_KEY:
+            conf->cx = conf->screen_cols - 1;
             break;
         case CTRL_KEY('q'):
             write(STDOUT_FILENO, "\x1b[2J", 4);

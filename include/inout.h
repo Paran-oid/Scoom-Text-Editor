@@ -3,22 +3,22 @@
 
 #define CTRL_KEY(c) ((c) & 0x1f)
 
-struct editorConfig;
+struct Config;
 struct abuf;
 typedef unsigned long size_t;
 
-int editor_create(struct editorConfig *conf);
+int editor_create(struct Config *conf);
 
 #define ABUF_INIT \
     { NULL, 0 }
 int ab_append(struct abuf *ab, const char *s, size_t len);
 int ab_free(struct abuf *ab);
 
-int editor_refresh_screen(struct editorConfig *conf);
-int editor_draw_rows(struct editorConfig *conf, struct abuf *ab);
+int editor_refresh_screen(struct Config *conf);
+int editor_draw_rows(struct Config *conf, struct abuf *ab);
 
-void editor_cursor_move(struct editorConfig *conf, int key);
+void editor_cursor_move(struct Config *conf, int key);
 int editor_read_key(void);
-int editor_process_key_press(struct editorConfig *conf);
+int editor_process_key_press(struct Config *conf);
 
 #endif
