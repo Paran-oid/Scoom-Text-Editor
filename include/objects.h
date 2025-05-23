@@ -6,6 +6,12 @@
 
 #define SCOOM_VERSION 0.01
 
+// appending buffer
+struct abuf {
+    char* buf;
+    int len;
+};
+
 // editor row
 struct e_row {
     char* chars;
@@ -24,13 +30,8 @@ struct Config {
 
     // for text management
     struct e_row* rows;
-    int num_rows;
-};
-
-// appending buffer
-struct abuf {
-    char* buf;
-    int len;
+    int numrows;
+    int rowoff, coloff;
 };
 
 enum EditorKey {

@@ -15,8 +15,10 @@ int editor_create(struct Config *conf) {
     conf->cx = 0;
     conf->cy = 0;
 
-    conf->num_rows = 0;
+    conf->numrows = 0;
     conf->rows = NULL;
+    conf->rowoff = 0;
+    conf->coloff = 0;
 
     if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
         0) {
@@ -46,6 +48,8 @@ int ab_free(struct abuf *ab) {
 /***  Screen display and rendering section ***/
 
 int editor_refresh_screen(struct Config *conf) {
+    editor_scroll(conf);
+
     struct abuf ab = ABUF_INIT;
     ab_append(&ab, "\x1b[?25l", 6);
     ab_append(&ab, "\x1b[H", 3);  // move top left
@@ -61,7 +65,8 @@ int editor_refresh_screen(struct Config *conf) {
 
     char buf[32];
     // <esc>[<row>;<col>H
-    snprintf(buf, sizeof(buf), "\x1B[%d;%dH", conf->cy + 1, conf->cx + 1);
+    snprintf(buf, sizeof(buf), "\x1B[%d;%dH", conf->cy - conf->rowoff + 1,
+             conf->cx - conf->coloff + 1);
     ab_append(&ab, buf, strlen(buf));
 
     write(STDOUT_FILENO, ab.buf, ab.len);
@@ -71,8 +76,11 @@ int editor_refresh_screen(struct Config *conf) {
 
 int editor_draw_rows(struct Config *conf, struct abuf *ab) {
     for (size_t y = 0; y < conf->screen_rows; y++) {
-        if (y >= conf->num_rows) {
-            if (conf->num_rows == 0 && y == conf->screen_rows / 3) {
+        int filerow = y + conf->rowoff;
+        if (filerow >= conf->numrows) {
+            // if there are no rows then we can safely assume we need to output
+            // welcome screen
+            if (conf->numrows == 0 && y == conf->screen_rows / 3) {
                 char buf[100];
                 int welcome_len = snprintf(buf, sizeof(buf),
                                            "Welcome to version %.2lf of Scoom!",
@@ -94,9 +102,12 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
                 ab_append(ab, "~", 1);
             }
         } else {
-            int len = conf->rows[y].size;
-            if (len > conf->screen_cols) len = conf->screen_cols;
-            ab_append(ab, conf->rows[y].chars, len);
+            int len = conf->rows[filerow].size - conf->coloff;
+            if (len < 0) len = 0;
+            if (len > conf->screen_cols) {
+                len = conf->screen_cols;
+            }
+            ab_append(ab, &conf->rows[filerow].chars[conf->coloff], len);
         }
 
         ab_append(ab, "\x1b[K", 4);  // erase in line command
@@ -108,23 +119,53 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
     return 0;
 }
 
-/***  Cursor movement section ***/
+/***  Cursor movement and scrolling section ***/
 
-void editor_cursor_move(struct Config *conf, int key) {
+int editor_scroll(struct Config *conf) {
+    if (conf->cx < conf->coloff) {
+        conf->coloff = conf->cx;
+    }
+
+    if (conf->cx >= conf->screen_cols + conf->coloff) {
+        conf->coloff = conf->cx - conf->screen_cols + 1;
+    }
+
+    if (conf->cy < conf->rowoff) {
+        conf->rowoff = conf->cy;
+    }
+    if (conf->cy >= conf->rowoff + conf->screen_rows) {
+        conf->rowoff = conf->cy - conf->screen_rows + 1;
+    }
+    return 0;
+}
+
+int editor_cursor_move(struct Config *conf, int key) {
+    struct e_row *row =
+        (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
+
     switch (key) {
         case ARROW_LEFT:
             if (conf->cx != 0) conf->cx--;
             break;
         case ARROW_RIGHT:
-            if (conf->cx != conf->screen_cols - 1) conf->cx++;
+            if (row && conf->cx < row->size) conf->cx++;
             break;
         case ARROW_UP:
             if (conf->cy != 0) conf->cy--;
             break;
         case ARROW_DOWN:
-            if (conf->cy != conf->screen_rows - 1) conf->cy++;
+            if (conf->cy < conf->numrows) conf->cy++;
             break;
+        default:
+            return 1;
     }
+
+    row = (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
+    if (row && conf->cx > row->size) {
+        conf->cx = row->size;
+    }
+
+    return 0;
 }
 
 /***  Key processing section ***/
@@ -199,6 +240,8 @@ int editor_process_key_press(struct Config *conf) {
                         like for ARROWS
 
     */
+    struct e_row *row =
+        (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     int c = editor_read_key();
     switch (c) {
         case ARROW_UP:
@@ -218,7 +261,9 @@ int editor_process_key_press(struct Config *conf) {
             conf->cx = 0;
             break;
         case END_KEY:
-            conf->cx = conf->screen_cols - 1;
+            if (row) {
+                conf->cx = row->size;
+            }
             break;
         case CTRL_KEY('q'):
             write(STDOUT_FILENO, "\x1b[2J", 4);
