@@ -5,6 +5,7 @@
 #include <termios.h>
 
 #define SCOOM_VERSION 0.01
+#define TAB_SIZE 4
 
 // appending buffer
 struct abuf {
@@ -16,14 +17,20 @@ struct abuf {
 struct e_row {
     char* chars;
     size_t size;
+
+    char* render;
+    size_t rsize;
 };
 
 struct Config {
     struct termios termios;
 
-    // cursor positions;
+    // cursor positions non rendered
     int cx;
     int cy;
+
+    // cursor positions rendered
+    int rx;
 
     int screen_rows;
     int screen_cols;

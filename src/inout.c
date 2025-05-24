@@ -6,24 +6,28 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "file.h"
 #include "objects.h"
 #include "terminal.h"
 
 /***  Misc ***/
 
 int editor_create(struct Config *conf) {
+    // cursor section
     conf->cx = 0;
     conf->cy = 0;
+    conf->rx = 0;
 
     conf->numrows = 0;
     conf->rows = NULL;
     conf->rowoff = 0;
     conf->coloff = 0;
-
     if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
         0) {
         return -1;
     }
+
+    conf->screen_rows--;
     return 0;
 }
 
@@ -51,12 +55,14 @@ int editor_refresh_screen(struct Config *conf) {
     editor_scroll(conf);
 
     struct abuf ab = ABUF_INIT;
-    ab_append(&ab, "\x1b[?25l", 6);
-    ab_append(&ab, "\x1b[H", 3);  // move top left
+    ab_append(&ab, "\x1b[?25l", 6);  // hide cursor
+    ab_append(&ab, "\x1b[H", 3);     // move top left
 
     editor_draw_rows(conf, &ab);
+    editor_draw_statusbar(conf, &ab);
+
     ab_append(&ab, "\x1b[H", 3);
-    ab_append(&ab, "\x1b[?25h", 6);
+    ab_append(&ab, "\x1b[?25h", 6);  // display cursor again
 
     /*
             Cursor is 1-indexed, so we have to also add 1 for it's coordinates
@@ -66,12 +72,28 @@ int editor_refresh_screen(struct Config *conf) {
     char buf[32];
     // <esc>[<row>;<col>H
     snprintf(buf, sizeof(buf), "\x1B[%d;%dH", conf->cy - conf->rowoff + 1,
-             conf->cx - conf->coloff + 1);
+             conf->rx - conf->coloff + 1);
     ab_append(&ab, buf, strlen(buf));
 
     write(STDOUT_FILENO, ab.buf, ab.len);
     ab_free(&ab);
     return 0;
+}
+
+int editor_draw_statusbar(struct Config *conf, struct abuf *ab) {
+    /*
+     you could specify all of these attributes using the command <esc>[1;4;5;7m.
+     An argument of 0 clears all attributes, and is the default argument, so we
+     use <esc>[m to go back to normal text formatting.
+    */
+
+    ab_append(ab, "\x1b[7m", 4);  // invert colors
+    size_t len = 0;
+    while (len < conf->screen_cols) {
+        ab_append(ab, " ", 1);
+        len++;
+    }
+    ab_append(ab, "\x1b[m", 3);  // returns to normal
 }
 
 int editor_draw_rows(struct Config *conf, struct abuf *ab) {
@@ -102,18 +124,16 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
                 ab_append(ab, "~", 1);
             }
         } else {
-            int len = conf->rows[filerow].size - conf->coloff;
+            int len = conf->rows[filerow].rsize - conf->coloff;
             if (len < 0) len = 0;
             if (len > conf->screen_cols) {
                 len = conf->screen_cols;
             }
-            ab_append(ab, &conf->rows[filerow].chars[conf->coloff], len);
+            ab_append(ab, &conf->rows[filerow].render[conf->coloff], len);
         }
 
         ab_append(ab, "\x1b[K", 4);  // erase in line command
-        if (y < conf->screen_rows - 1) {
-            ab_append(ab, "\r\n", 2);
-        }
+        ab_append(ab, "\r\n", 2);
     }
 
     return 0;
@@ -122,12 +142,17 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
 /***  Cursor movement and scrolling section ***/
 
 int editor_scroll(struct Config *conf) {
-    if (conf->cx < conf->coloff) {
-        conf->coloff = conf->cx;
+    conf->rx = 0;
+    if (conf->cy < conf->numrows) {
+        conf->rx = editor_update_cx_rx(&conf->rows[conf->cy], conf->cx);
     }
 
-    if (conf->cx >= conf->screen_cols + conf->coloff) {
-        conf->coloff = conf->cx - conf->screen_cols + 1;
+    if (conf->rx < conf->coloff) {
+        conf->coloff = conf->rx;
+    }
+
+    if (conf->rx >= conf->screen_cols + conf->coloff) {
+        conf->coloff = conf->rx - conf->screen_cols + 1;
     }
 
     if (conf->cy < conf->rowoff) {
@@ -145,10 +170,20 @@ int editor_cursor_move(struct Config *conf, int key) {
 
     switch (key) {
         case ARROW_LEFT:
-            if (conf->cx != 0) conf->cx--;
+            if (conf->cx != 0) {
+                conf->cx--;
+            } else if (conf->cy > 0) {
+                conf->cy--;
+                conf->cx = conf->rows[conf->cy].size;
+            }
             break;
         case ARROW_RIGHT:
-            if (row && conf->cx < row->size) conf->cx++;
+            if (row && conf->cx < row->size) {
+                conf->cx++;
+            } else if (row && conf->cy < conf->numrows) {
+                conf->cx = 0;
+                conf->cy++;
+            }
             break;
         case ARROW_UP:
             if (conf->cy != 0) conf->cy--;
@@ -243,6 +278,9 @@ int editor_process_key_press(struct Config *conf) {
     struct e_row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     int c = editor_read_key();
+
+    int times = conf->screen_rows;  // this will be needed in case of page up or
+                                    // down basically
     switch (c) {
         case ARROW_UP:
         case ARROW_DOWN:
@@ -252,7 +290,14 @@ int editor_process_key_press(struct Config *conf) {
             break;
         case PAGE_UP:
         case PAGE_DOWN:
-            int times = conf->screen_rows;
+            if (c == PAGE_UP) {
+                // cursor jumps up to previous page
+                conf->cy = conf->rowoff;
+            } else if (c == PAGE_DOWN) {
+                // cursor jumps up to next page
+                conf->cy = conf->rowoff + conf->screen_rows - 1;
+                if (conf->cy > conf->numrows) conf->cy = conf->numrows;
+            }
             while (times--) {
                 editor_cursor_move(conf, c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
             }
