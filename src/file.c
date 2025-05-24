@@ -8,6 +8,9 @@
 #include "terminal.h"
 
 int editor_open(struct Config* conf, const char* path) {
+    free(conf->filename);
+    conf->filename = strdup(path);
+
     FILE* fp = fopen(path, "r");
     if (!fp) die("fopen");
 

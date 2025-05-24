@@ -11,10 +11,15 @@ int editor_create(struct Config *conf);
 
 #define ABUF_INIT \
     { NULL, 0 }
+
 int ab_append(struct abuf *ab, const char *s, size_t len);
 int ab_free(struct abuf *ab);
 
+int editor_set_status_message(struct Config *conf, const char *message, ...);
+
 int editor_refresh_screen(struct Config *conf);
+
+int editor_draw_messagebar(struct Config *conf, struct abuf *ab);
 int editor_draw_statusbar(struct Config *conf, struct abuf *ab);
 int editor_draw_rows(struct Config *conf, struct abuf *ab);
 

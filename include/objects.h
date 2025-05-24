@@ -7,6 +7,8 @@
 #define SCOOM_VERSION 0.01
 #define TAB_SIZE 4
 
+typedef long int time_t;
+
 // appending buffer
 struct abuf {
     char* buf;
@@ -24,6 +26,11 @@ struct e_row {
 
 struct Config {
     struct termios termios;
+    char* filename;
+
+    // status bar
+    char sbuf[80];  // status buffer
+    time_t sbuf_time;
 
     // cursor positions non rendered
     int cx;

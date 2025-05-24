@@ -1,9 +1,11 @@
 #include "inout.h"
 
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "file.h"
@@ -13,6 +15,12 @@
 /***  Misc ***/
 
 int editor_create(struct Config *conf) {
+    conf->filename = NULL;
+
+    // status message section
+    conf->sbuf[0] = '\0';
+    conf->sbuf_time = 0;
+
     // cursor section
     conf->cx = 0;
     conf->cy = 0;
@@ -27,7 +35,8 @@ int editor_create(struct Config *conf) {
         return -1;
     }
 
-    conf->screen_rows--;
+    conf->screen_rows -= 2;
+
     return 0;
 }
 
@@ -49,6 +58,16 @@ int ab_free(struct abuf *ab) {
     return 0;
 }
 
+int editor_set_status_message(struct Config *conf, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(conf->sbuf, sizeof(conf->sbuf), fmt, ap);
+    va_end(ap);
+    conf->sbuf_time = time(NULL);
+
+    return 0;
+}
+
 /***  Screen display and rendering section ***/
 
 int editor_refresh_screen(struct Config *conf) {
@@ -60,6 +79,7 @@ int editor_refresh_screen(struct Config *conf) {
 
     editor_draw_rows(conf, &ab);
     editor_draw_statusbar(conf, &ab);
+    editor_draw_messagebar(conf, &ab);
 
     ab_append(&ab, "\x1b[H", 3);
     ab_append(&ab, "\x1b[?25h", 6);  // display cursor again
@@ -80,6 +100,16 @@ int editor_refresh_screen(struct Config *conf) {
     return 0;
 }
 
+int editor_draw_messagebar(struct Config *conf, struct abuf *ab) {
+    ab_append(ab, "\x1b[K", 3);  // we clear current line in terminal
+    size_t message_len = strlen(conf->sbuf);
+    if (message_len > conf->screen_cols) message_len = conf->screen_cols;
+    // if message has length and time elapsed since
+    // last time message inserted is bigger than 5
+    if (message_len && time(NULL) - conf->sbuf_time < 5)
+        ab_append(ab, conf->sbuf, sizeof(conf->sbuf));
+}
+
 int editor_draw_statusbar(struct Config *conf, struct abuf *ab) {
     /*
      you could specify all of these attributes using the command <esc>[1;4;5;7m.
@@ -88,11 +118,30 @@ int editor_draw_statusbar(struct Config *conf, struct abuf *ab) {
     */
 
     ab_append(ab, "\x1b[7m", 4);  // invert colors
-    size_t len = 0;
-    while (len < conf->screen_cols) {
-        ab_append(ab, " ", 1);
-        len++;
+
+    // text to write inside statusbar
+    char status[64];
+    size_t status_len =
+        snprintf(status, sizeof(status), "%.20s - %d lines",
+                 conf->filename ? conf->filename : "No Name", conf->numrows);
+
+    ab_append(ab, status, status_len);
+
+    char numline[10];
+    int numline_len = snprintf(numline, sizeof(numline), "%d/%d", conf->cy + 1,
+                               conf->numrows);
+
+    while (status_len < conf->screen_cols) {
+        if (status_len == conf->screen_cols - numline_len) {
+            ab_append(ab, numline, numline_len);
+            break;
+        } else {
+            ab_append(ab, " ", 1);
+            status_len++;
+        }
     }
+
+    ab_append(ab, "\r\n", 2);
     ab_append(ab, "\x1b[m", 3);  // returns to normal
 }
 
