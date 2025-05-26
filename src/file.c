@@ -1,10 +1,14 @@
 #include "file.h"
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
+#include "inout.h"
 #include "objects.h"
+#include "operations.h"
 #include "terminal.h"
 
 int editor_open(struct Config* conf, const char* path) {
@@ -26,75 +30,30 @@ int editor_open(struct Config* conf, const char* path) {
         editor_append_row(conf, line, line_len);
     }
 
+    conf->dirty = 0;
     free(line);
     fclose(fp);
 
     return 0;
 }
 
-int editor_append_row(struct Config* conf, const char* content,
-                      size_t content_len) {
-    conf->rows =
-        realloc(conf->rows, sizeof(struct e_row) * (conf->numrows + 1));
-    int at = conf->numrows;
+int editor_save(struct Config* conf) {
+    char* file_data;
+    size_t file_data_size;
 
-    conf->rows[at].size = content_len;
-    conf->rows[at].chars = calloc(content_len + 1, sizeof(char));
-    memcpy(conf->rows[at].chars, content, content_len);
-    conf->rows[at].chars[content_len] = '\0';
+    editor_rows_to_string(conf, &file_data, &file_data_size);
+    int fd = open(conf->filename, O_CREAT | O_WRONLY, 0644);
 
-    conf->rows[at].render = NULL;
-    conf->rows[at].rsize = 0;
+    if (!fd) return -1;
+    // update size of file to one inserted
+    if (ftruncate(fd, file_data_size) == -1) return 1;
+    if (write(fd, file_data, file_data_size) != file_data_size) return 1;
 
-    conf->numrows++;
+    editor_set_status_message(conf, "%d bytes written to disk", file_data_size);
 
-    editor_update_row(&conf->rows[at]);
+    conf->dirty = 0;
+    close(fd);
+    free(file_data);
 
-    return 0;
-}
-
-int editor_update_cx_rx(struct e_row* row, int cx) {
-    int rx = 0;
-    for (size_t j = 0; j < cx; j++) {
-        if (row->chars[j] == '\t') {
-            rx += (TAB_SIZE - 1) - (rx % TAB_SIZE);
-        }
-        rx++;
-    }
-    return rx;
-}
-
-int editor_update_row(struct e_row* row) {
-    free(row->render);
-
-    // we need to check how much memory to allocate for the renderer
-    int tabs = 0;
-    size_t n = 0;
-    for (size_t j = 0; j < row->size; j++) {
-        if (row->chars[j] == '\t') tabs++;
-    }
-
-    /* TAB_SIZE - 1:
-        Because the tab is already counted as 1 character in row->size
-    */
-    row->render = malloc(row->size + tabs * (TAB_SIZE - 1) + 1);
-
-    for (size_t j = 0; j < row->size; j++) {
-        /*
-                If a tab is encountered:
-                - keep adding spaces until n is divisible by TAB_SIZE macro
-        */
-        if (row->chars[j] == '\t') {
-            row->render[n++] = ' ';
-            while (n % TAB_SIZE != 0) {
-                row->render[n++] = ' ';
-            }
-        } else {
-            row->render[n++] = row->chars[j];
-        }
-    }
-
-    row->rsize = n;
-    row->render[n] = '\0';
     return 0;
 }

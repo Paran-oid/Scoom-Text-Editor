@@ -7,10 +7,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(include_dir include)
 set(src 
 	main.c
-	
 	src/terminal.c
 	src/inout.c
-	src/file.c)
+	src/file.c
+	src/operations.c
+)
 
 add_executable(SCOOM ${src})
 target_include_directories(SCOOM PRIVATE ${include_dir})

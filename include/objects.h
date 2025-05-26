@@ -6,6 +6,7 @@
 
 #define SCOOM_VERSION 0.01
 #define TAB_SIZE 4
+#define QUIT_TIMES 3
 
 typedef long int time_t;
 
@@ -25,8 +26,8 @@ struct e_row {
 };
 
 struct Config {
+    // termios related
     struct termios termios;
-    char* filename;
 
     // status bar
     char sbuf[80];  // status buffer
@@ -42,13 +43,16 @@ struct Config {
     int screen_rows;
     int screen_cols;
 
-    // for text management
+    // file handling
+    char* filename;
     struct e_row* rows;
     int numrows;
     int rowoff, coloff;
+    unsigned int dirty : 1;
 };
 
 enum EditorKey {
+    BACKSPACE = 127,
     ARROW_UP = 1000,
     ARROW_DOWN,
     ARROW_RIGHT,

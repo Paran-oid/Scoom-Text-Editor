@@ -10,6 +10,7 @@
 
 #include "file.h"
 #include "objects.h"
+#include "operations.h"
 #include "terminal.h"
 
 /***  Misc ***/
@@ -30,6 +31,7 @@ int editor_create(struct Config *conf) {
     conf->rows = NULL;
     conf->rowoff = 0;
     conf->coloff = 0;
+    conf->dirty = 0;
     if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
         0) {
         return -1;
@@ -122,8 +124,9 @@ int editor_draw_statusbar(struct Config *conf, struct abuf *ab) {
     // text to write inside statusbar
     char status[64];
     size_t status_len =
-        snprintf(status, sizeof(status), "%.20s - %d lines",
-                 conf->filename ? conf->filename : "No Name", conf->numrows);
+        snprintf(status, sizeof(status), "%.20s - %d lines %s",
+                 conf->filename ? conf->filename : "No Name", conf->numrows,
+                 conf->dirty ? "(modified)" : "");
 
     ab_append(ab, status, status_len);
 
@@ -324,6 +327,9 @@ int editor_process_key_press(struct Config *conf) {
                         like for ARROWS
 
     */
+
+    static int quit_times = QUIT_TIMES;
+
     struct e_row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     int c = editor_read_key();
@@ -331,12 +337,17 @@ int editor_process_key_press(struct Config *conf) {
     int times = conf->screen_rows;  // this will be needed in case of page up or
                                     // down basically
     switch (c) {
+        case '\r':
+            // TODO
+            break;
+
         case ARROW_UP:
         case ARROW_DOWN:
         case ARROW_RIGHT:
         case ARROW_LEFT:
             editor_cursor_move(conf, c);
             break;
+
         case PAGE_UP:
         case PAGE_DOWN:
             if (c == PAGE_UP) {
@@ -351,23 +362,55 @@ int editor_process_key_press(struct Config *conf) {
                 editor_cursor_move(conf, c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
             }
             break;
+
         case HOME_KEY:
             conf->cx = 0;
             break;
+
         case END_KEY:
             if (row) {
                 conf->cx = row->size;
             }
             break;
+
+        case BACKSPACE:
+        case CTRL_KEY('h'):
+        case DEL_KEY:
+            if (c == DEL_KEY) {
+                editor_cursor_move(conf, ARROW_RIGHT);
+            }
+            editor_delete_char(conf);
+            break;
+
         case CTRL_KEY('q'):
+            if (quit_times != 0 && conf->dirty) {
+                editor_set_status_message(conf,
+                                          "WARNING!!! file has unsaved changes."
+                                          "Press CTRL-Q %d time(s) to leave",
+                                          quit_times);
+                quit_times--;
+                return 0;
+            }
             write(STDOUT_FILENO, "\x1b[2J", 4);
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(1);
             break;
+        case CTRL_KEY('l'):
+        case '\x1b':
+            // TODO
+            break;
+
+        case CTRL_KEY('s'):
+            editor_save(conf);
+            break;
+
         default:
-            printf("%c\r\n", c);
+            editor_insert_char(conf, c);
             break;
     }
+
+    // we reset if user entered something else than a CTRL-Q
+    quit_times = QUIT_TIMES;
 
     return 0;
 }
