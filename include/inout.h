@@ -15,6 +15,7 @@ int editor_create(struct Config *conf);
 int ab_append(struct abuf *ab, const char *s, size_t len);
 int ab_free(struct abuf *ab);
 
+char *editor_prompt(struct Config *conf, const char *prompt);
 int editor_set_status_message(struct Config *conf, const char *message, ...);
 int editor_refresh_screen(struct Config *conf);
 

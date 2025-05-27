@@ -38,6 +38,14 @@ int editor_open(struct Config* conf, const char* path) {
 }
 
 int editor_save(struct Config* conf) {
+    if (!conf->filename) {
+        conf->filename = editor_prompt(conf, "Save as: %s");
+        if (!conf->filename) {
+            editor_set_status_message(conf, "Save aborted...");
+            return 1;
+        }
+    }
+
     char* file_data;
     size_t file_data_size;
 

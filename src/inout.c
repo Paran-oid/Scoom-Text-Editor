@@ -1,5 +1,6 @@
 #include "inout.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -60,6 +61,46 @@ int ab_free(struct abuf *ab) {
     return 0;
 }
 
+char *editor_prompt(struct Config *conf, const char *prompt) {
+    size_t bufsize = 128;
+    size_t buflen = 0;
+    char *buf = malloc(bufsize);
+    buf[0] = '\0';
+
+    while (1) {
+        editor_set_status_message(conf, prompt, buf);
+        editor_refresh_screen(conf);
+        int c = editor_read_key();
+
+        if (c == '\r') {
+            if (buflen != 0) {
+                editor_set_status_message(conf, "");
+                return buf;
+            }
+
+        } else if (c == '\x1b') {
+            editor_set_status_message(conf, "");
+            free(buf);
+            return NULL;
+        } else if (!iscntrl(c) && c < 128) {
+            // if the character is not a control character and not one of the
+            // mapped Keys from objects.h
+            if (buflen == bufsize - 1) {
+                // resize buf e(ssentially
+                bufsize *= 2;
+                buf = realloc(buf, bufsize);
+            }
+            buf[buflen++] = c;
+            buf[buflen] = '\0';
+        } else if (c == DEL_KEY || c == CTRL_KEY('h') || c == BACKSPACE) {
+            if (buflen != 0) {
+                buf[--buflen] = '\0';
+            }
+        }
+    }
+    return NULL;
+}
+
 int editor_set_status_message(struct Config *conf, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -109,7 +150,9 @@ int editor_draw_messagebar(struct Config *conf, struct abuf *ab) {
     // if message has length and time elapsed since
     // last time message inserted is bigger than 5
     if (message_len && time(NULL) - conf->sbuf_time < 5)
-        ab_append(ab, conf->sbuf, sizeof(conf->sbuf));
+        ab_append(ab, conf->sbuf, message_len);
+
+    return 0;
 }
 
 int editor_draw_statusbar(struct Config *conf, struct abuf *ab) {
