@@ -27,7 +27,7 @@ int editor_open(struct Config* conf, const char* path) {
                (line[line_len - 1] == '\r' || line[line_len - 1] == '\n')) {
             line_len--;
         }
-        editor_append_row(conf, line, line_len);
+        editor_insert_row(conf, conf->numrows, line, line_len);
     }
 
     conf->dirty = 0;

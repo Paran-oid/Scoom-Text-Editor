@@ -22,6 +22,7 @@ int editor_draw_messagebar(struct Config *conf, struct abuf *ab);
 int editor_draw_statusbar(struct Config *conf, struct abuf *ab);
 int editor_draw_rows(struct Config *conf, struct abuf *ab);
 
+int editor_insert_newline(struct Config *conf);
 int editor_scroll(struct Config *conf);
 int editor_cursor_move(struct Config *conf, int key);
 

@@ -193,6 +193,27 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
 
 /***  Cursor movement and scrolling section ***/
 
+int editor_insert_newline(struct Config *conf) {
+    int res;
+    if (conf->cx == 0) {
+        res = editor_insert_row(conf, conf->cy, "", 0);
+    } else {
+        struct e_row *row = &conf->rows[conf->cy];
+        res = editor_insert_row(conf, conf->cy + 1, &row->chars[conf->cx],
+                                row->size - conf->cx);
+
+        row = &conf->rows[conf->cy];  // realloc could make our pointer invalid
+                                      // so better safe than sorry
+        row->size = conf->cx;
+        row->chars[row->size] = '\0';
+        editor_update_row(row);
+    }
+    if (res == 0) {
+        conf->cx = 0, conf->cy++;
+    }
+    return res;
+}
+
 int editor_scroll(struct Config *conf) {
     conf->rx = 0;
     if (conf->cy < conf->numrows) {
@@ -338,7 +359,7 @@ int editor_process_key_press(struct Config *conf) {
                                     // down basically
     switch (c) {
         case '\r':
-            // TODO
+            editor_insert_newline(conf);
             break;
 
         case ARROW_UP:

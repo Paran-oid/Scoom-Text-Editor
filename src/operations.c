@@ -38,11 +38,14 @@ int editor_delete_row_char(struct Config* conf, struct e_row* row, int at) {
     conf->dirty = 1;
 }
 
-int editor_append_row(struct Config* conf, const char* content,
+int editor_insert_row(struct Config* conf, int at, const char* content,
                       size_t content_len) {
+    if (at < 0 || at > conf->numrows) return 1;
     conf->rows =
         realloc(conf->rows, sizeof(struct e_row) * (conf->numrows + 1));
-    int at = conf->numrows;
+
+    memmove(&conf->rows[at + 1], &conf->rows[at],
+            sizeof(struct e_row) * (conf->numrows - at));
 
     conf->rows[at].size = content_len;
     conf->rows[at].chars = calloc(content_len + 1, sizeof(char));
@@ -106,7 +109,8 @@ int editor_delete_row(struct Config* conf, int at) {
 }
 
 int editor_insert_char(struct Config* conf, int c) {
-    if (conf->cy == conf->numrows) editor_append_row(conf, "", 0);
+    if (conf->cy == conf->numrows)
+        editor_insert_row(conf, conf->numrows, "", 0);
     conf->dirty = 1;
     return editor_insert_row_char(&conf->rows[conf->cy], conf->cx++, c);
 }
