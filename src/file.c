@@ -136,7 +136,6 @@ int editor_cut(struct Config* conf) {
     editor_set_status_message(conf, "cut %d bytes into buffer", row->size);
 
     editor_delete_row(conf, (intptr_t)(row - conf->rows));
-
     pclose(pipe);
     return 0;
 }

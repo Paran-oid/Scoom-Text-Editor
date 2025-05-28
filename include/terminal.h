@@ -3,7 +3,7 @@
 
 struct Config;
 
-static void* temp;
+__attribute__((unused)) static void* temp;
 
 void term_create(struct Config* conf);
 void term_exit(void);
