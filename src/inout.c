@@ -9,6 +9,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "core.h"
 #include "file.h"
 #include "objects.h"
 #include "operations.h"
@@ -117,6 +118,7 @@ int editor_refresh_screen(struct Config *conf) {
     editor_scroll(conf);
 
     struct abuf ab = ABUF_INIT;
+    ab_append(&ab, "\x1b[6 q", 5);
     ab_append(&ab, "\x1b[?25l", 6);  // hide cursor
     ab_append(&ab, "\x1b[H", 3);     // move top left
 
@@ -468,6 +470,15 @@ int editor_process_key_press(struct Config *conf) {
             editor_save(conf);
             break;
 
+        case CTRL_KEY('c'):
+            editor_copy(conf);
+            break;
+        case CTRL_KEY('v'):
+            editor_paste(conf);
+            break;
+        case CTRL_KEY('x'):
+            editor_cut(conf);
+            break;
         default:
             editor_insert_char(conf, c);
             break;

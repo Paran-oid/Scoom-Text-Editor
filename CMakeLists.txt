@@ -5,12 +5,14 @@ project(SCOOM VERSION 0.1.0 LANGUAGES C)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(include_dir include)
-set(src 
+set(
+	src 
 	main.c
 	src/terminal.c
 	src/inout.c
 	src/file.c
 	src/operations.c
+	src/core.c
 )
 
 add_executable(SCOOM ${src})

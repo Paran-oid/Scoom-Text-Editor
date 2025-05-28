@@ -1,6 +1,5 @@
 #include "terminal.h"
 
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +7,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "core.h"
 #include "inout.h"
 #include "objects.h"
 
@@ -17,11 +17,6 @@
 */
 
 // TCSAFLUSH: flushes before leaving the program
-
-void die(const char* s) {
-    perror(s);
-    exit(1);
-}
 
 void term_create(struct Config* conf) {
     if (tcgetattr(STDIN_FILENO, &conf->termios) == -1) {
@@ -42,6 +37,7 @@ void term_create(struct Config* conf) {
     conf->termios.c_iflag &= ~(IXON | ICRNL);
     conf->termios.c_cflag |= (CS8);
     conf->termios.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
+	
 
     // return 0 if nothing entered
     conf->termios.c_cc[VMIN] = 0;

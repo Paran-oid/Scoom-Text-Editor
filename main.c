@@ -13,8 +13,11 @@ int main(int argc, char* argv[]) {
     editor_create(conf);
     term_create(conf);
 
+    char* ptest = "holy_crap.txt";
     if (argc >= 2) {
         editor_open(conf, argv[1]);
+    } else if (ptest) {
+        editor_open(conf, ptest);
     }
 
     editor_set_status_message(conf, "HELP: CTRL-S = save | CTRL-Q = Quit");

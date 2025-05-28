@@ -5,8 +5,6 @@ struct Config;
 
 static void* temp;
 
-void die(const char* s);
-
 void term_create(struct Config* conf);
 void term_exit(void);
 
