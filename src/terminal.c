@@ -37,7 +37,6 @@ void term_create(struct Config* conf) {
     conf->termios.c_iflag &= ~(IXON | ICRNL);
     conf->termios.c_cflag |= (CS8);
     conf->termios.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
-	
 
     // return 0 if nothing entered
     conf->termios.c_cc[VMIN] = 0;
@@ -68,7 +67,7 @@ int term_get_window_size(struct Config* conf, int* rows, int* cols) {
         // C: cursor forward(continue)
         // B: cursor down(bottom)
         if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
-        return term_get_cursor_position(conf, rows, cols);
+        return term_get_cursor_position(rows, cols);
     } else {
         conf->screen_cols = ws.ws_col;
         conf->screen_rows = ws.ws_row;
@@ -76,7 +75,7 @@ int term_get_window_size(struct Config* conf, int* rows, int* cols) {
     }
 }
 
-int term_get_cursor_position(struct Config* conf, int* rows, int* cols) {
+int term_get_cursor_position(int* rows, int* cols) {
     size_t i = 0;
     char buf[32];
     // Command from host (\x1b[6n) – Please report active position (using a CPR

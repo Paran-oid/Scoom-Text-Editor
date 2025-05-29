@@ -53,10 +53,16 @@ struct Config {
 
 enum EditorKey {
     BACKSPACE = 127,
+
     ARROW_UP = 1000,
     ARROW_DOWN,
     ARROW_RIGHT,
     ARROW_LEFT,
+
+    CTRL_ARROW_UP,
+    CTRL_ARROW_DOWN,
+    CTRL_ARROW_RIGHT,
+    CTRL_ARROW_LEFT,
 
     PAGE_UP,
     PAGE_DOWN,

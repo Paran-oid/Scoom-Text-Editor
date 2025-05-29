@@ -11,10 +11,12 @@
 int editor_free_row(struct e_row* row) {
     free(row->chars);
     free(row->render);
+
+    return 0;
 }
 
 int editor_insert_row_char(struct e_row* row, int at, int c) {
-    if (at < 0 || at > row->size) {
+    if (at < 0 || (size_t)at > row->size) {
         return 1;
     }
     // n stands for new for now
@@ -31,12 +33,14 @@ int editor_insert_row_char(struct e_row* row, int at, int c) {
 }
 
 int editor_delete_row_char(struct Config* conf, struct e_row* row, int at) {
-    if (at < 0 || at > row->size) return 1;
+    if (at < 0 || (size_t)at > row->size) return 1;
 
     memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
     row->size--;
     editor_update_row(row);
     conf->dirty = 1;
+
+    return 0;
 }
 
 int editor_insert_row(struct Config* conf, int at, const char* content,
@@ -134,7 +138,7 @@ int editor_delete_char(struct Config* conf) {
 int editor_rows_to_string(struct Config* conf, char** result,
                           size_t* result_size) {
     size_t total_size = 0;
-    for (size_t i = 0; i < conf->numrows; i++) {
+    for (size_t i = 0; i < (size_t)conf->numrows; i++) {
         total_size += conf->rows[i].size + 1;
     }
     *result_size = total_size;
@@ -143,7 +147,7 @@ int editor_rows_to_string(struct Config* conf, char** result,
 
     char* curr_ptr = file_data;
 
-    for (size_t i = 0; i < conf->numrows; i++) {
+    for (size_t i = 0; i < (size_t)conf->numrows; i++) {
         memcpy(curr_ptr, conf->rows[i].chars, conf->rows[i].size);
         curr_ptr += conf->rows[i].size;
         *curr_ptr = '\n';
@@ -163,15 +167,34 @@ int editor_row_append_string(struct Config* conf, struct e_row* row, char* s,
     row->chars[row->size] = '\0';
     editor_update_row(row);
     conf->dirty = 1;
+
+    return 0;
 }
 
 int editor_update_cx_rx(struct e_row* row, int cx) {
     int rx = 0;
-    for (size_t j = 0; j < cx; j++) {
+    for (size_t j = 0; j < (size_t)cx; j++) {
         if (row->chars[j] == '\t') {
             rx += (TAB_SIZE - 1) - (rx % TAB_SIZE);
         }
         rx++;
     }
     return rx;
+}
+
+int editor_update_rx_cx(struct e_row* row, int rx) {
+    int curr_rx = 0;
+    int cx = 0;
+
+    for (; cx < row->size; cx++) {
+        if (row->chars[cx] == '\t') {
+            curr_rx += (TAB_SIZE - 1) - (curr_rx % TAB_SIZE);
+        }
+
+        curr_rx++;
+
+        if (curr_rx > rx) return cx;
+    }
+
+    return cx;
 }

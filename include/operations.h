@@ -22,5 +22,6 @@ int editor_row_append_string(struct Config* conf, struct e_row* row, char* s,
                              size_t slen);
 
 int editor_update_cx_rx(struct e_row* row, int cx);
+int editor_update_rx_cx(struct e_row* row, int rx);
 
 #endif

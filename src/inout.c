@@ -15,35 +15,6 @@
 #include "operations.h"
 #include "terminal.h"
 
-/***  Misc ***/
-
-int editor_create(struct Config *conf) {
-    conf->filename = NULL;
-
-    // status message section
-    conf->sbuf[0] = '\0';
-    conf->sbuf_time = 0;
-
-    // cursor section
-    conf->cx = 0;
-    conf->cy = 0;
-    conf->rx = 0;
-
-    conf->numrows = 0;
-    conf->rows = NULL;
-    conf->rowoff = 0;
-    conf->coloff = 0;
-    conf->dirty = 0;
-    if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
-        0) {
-        return -1;
-    }
-
-    conf->screen_rows -= 2;
-
-    return 0;
-}
-
 /***  Appending buffer section ***/
 
 int ab_append(struct abuf *ab, const char *s, size_t slen) {
@@ -140,7 +111,10 @@ int editor_refresh_screen(struct Config *conf) {
              conf->rx - conf->coloff + 1);
     ab_append(&ab, buf, strlen(buf));
 
-    write(STDOUT_FILENO, ab.buf, ab.len);
+    if (write(STDOUT_FILENO, ab.buf, ab.len) == 0) {
+        return 1;
+    }
+
     ab_free(&ab);
     return 0;
 }
@@ -148,7 +122,8 @@ int editor_refresh_screen(struct Config *conf) {
 int editor_draw_messagebar(struct Config *conf, struct abuf *ab) {
     ab_append(ab, "\x1b[K", 3);  // we clear current line in terminal
     size_t message_len = strlen(conf->sbuf);
-    if (message_len > conf->screen_cols) message_len = conf->screen_cols;
+    if (message_len > (size_t)conf->screen_cols)
+        message_len = conf->screen_cols;
     // if message has length and time elapsed since
     // last time message inserted is bigger than 5
     if (message_len && time(NULL) - conf->sbuf_time < 5)
@@ -179,8 +154,8 @@ int editor_draw_statusbar(struct Config *conf, struct abuf *ab) {
     int numline_len = snprintf(numline, sizeof(numline), "%d/%d", conf->cy + 1,
                                conf->numrows);
 
-    while (status_len < conf->screen_cols) {
-        if (status_len == conf->screen_cols - numline_len) {
+    while (status_len < (size_t)conf->screen_cols) {
+        if (status_len == (size_t)conf->screen_cols - numline_len) {
             ab_append(ab, numline, numline_len);
             break;
         } else {
@@ -191,15 +166,17 @@ int editor_draw_statusbar(struct Config *conf, struct abuf *ab) {
 
     ab_append(ab, "\r\n", 2);
     ab_append(ab, "\x1b[m", 3);  // returns to normal
+
+    return 0;
 }
 
 int editor_draw_rows(struct Config *conf, struct abuf *ab) {
-    for (size_t y = 0; y < conf->screen_rows; y++) {
+    for (size_t y = 0; y < (size_t)conf->screen_rows; y++) {
         int filerow = y + conf->rowoff;
         if (filerow >= conf->numrows) {
             // if there are no rows then we can safely assume we need to output
             // welcome screen
-            if (conf->numrows == 0 && y == conf->screen_rows / 3) {
+            if (conf->numrows == 0 && y == (size_t)conf->screen_rows / 3) {
                 char buf[100];
                 int welcome_len = snprintf(buf, sizeof(buf),
                                            "Welcome to version %.2lf of Scoom!",
@@ -282,6 +259,10 @@ int editor_scroll(struct Config *conf) {
     return 0;
 }
 
+int editor_cursor_shift(struct Config *conf, enum EditorKey key) {
+    return 0;
+}  // TODO
+
 int editor_cursor_move(struct Config *conf, int key) {
     struct e_row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
@@ -296,9 +277,9 @@ int editor_cursor_move(struct Config *conf, int key) {
             }
             break;
         case ARROW_RIGHT:
-            if (row && conf->cx < row->size) {
+            if (row && conf->cx < (int)row->size) {
                 conf->cx++;
-            } else if (row && conf->cy < conf->numrows) {
+            } else if (row && conf->cy < conf->numrows - 1) {
                 conf->cx = 0;
                 conf->cy++;
             }
@@ -307,14 +288,14 @@ int editor_cursor_move(struct Config *conf, int key) {
             if (conf->cy != 0) conf->cy--;
             break;
         case ARROW_DOWN:
-            if (conf->cy < conf->numrows) conf->cy++;
+            if (conf->cy < conf->numrows - 1) conf->cy++;
             break;
         default:
             return 1;
     }
 
     row = (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
-    if (row && conf->cx > row->size) {
+    if (row && conf->cx > (int)row->size) {
         conf->cx = row->size;
     }
 
@@ -331,7 +312,7 @@ int editor_read_key(void) {
     }
 
     if (c == '\x1b') {
-        char seq[3];
+        char seq[5];
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
         if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
         if (seq[0] == '[') {
@@ -351,6 +332,25 @@ int editor_read_key(void) {
                             return PAGE_UP;
                         case '6':
                             return PAGE_DOWN;
+                    }
+                } else if (seq[2] == ';') {
+                    if (read(STDIN_FILENO, &seq[3], 1) != 1) return '\x1b';
+                    if (read(STDIN_FILENO, &seq[4], 1) != 1) return '\x1b';
+                    if (seq[1] == '1' && seq[3] == '5') {
+                        switch (seq[4]) {
+                            case 'A':
+                                return CTRL_ARROW_UP;
+                                break;
+                            case 'B':
+                                return CTRL_ARROW_DOWN;
+                                break;
+                            case 'C':
+                                return CTRL_ARROW_RIGHT;
+                                break;
+                            case 'D':
+                                return CTRL_ARROW_LEFT;
+                                break;
+                        }
                     }
                 }
             }
@@ -383,6 +383,8 @@ int editor_read_key(void) {
     } else {
         return c;
     }
+
+    return 0;
 }
 
 int editor_process_key_press(struct Config *conf) {
@@ -412,6 +414,26 @@ int editor_process_key_press(struct Config *conf) {
         case ARROW_RIGHT:
         case ARROW_LEFT:
             editor_cursor_move(conf, c);
+            break;
+
+        case CTRL_ARROW_UP:
+            if (conf->rowoff > 0) {
+                conf->cy--;
+                conf->rowoff--;
+            }
+            break;
+
+        case CTRL_ARROW_DOWN:
+            if (conf->rowoff < conf->numrows - 6) {
+                conf->rowoff++;
+                conf->cy++;
+            }
+            break;
+
+        case CTRL_ARROW_LEFT:
+            break;
+
+        case CTRL_ARROW_RIGHT:
             break;
 
         case PAGE_UP:
@@ -457,8 +479,8 @@ int editor_process_key_press(struct Config *conf) {
                 quit_times--;
                 return 0;
             }
-            write(STDOUT_FILENO, "\x1b[2J", 4);
-            write(STDOUT_FILENO, "\x1b[H", 3);
+            if (write(STDOUT_FILENO, "\x1b[2J", 4) == 0) return 1;
+            if (write(STDOUT_FILENO, "\x1b[H", 3) == 0) return 1;
             exit(1);
             break;
         case CTRL_KEY('l'):
@@ -478,6 +500,10 @@ int editor_process_key_press(struct Config *conf) {
             break;
         case CTRL_KEY('x'):
             editor_cut(conf);
+            break;
+        case CTRL_KEY('f'):
+        case CTRL_KEY('o'):  // TODO: remove me once done with debugging
+            editor_find(conf);
             break;
         default:
             editor_insert_char(conf, c);

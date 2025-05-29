@@ -19,4 +19,6 @@ int swap(void* a, void* b, size_t elsize) {
     memcpy(b, temp, elsize);
 
     free(temp);
+
+    return 0;
 }

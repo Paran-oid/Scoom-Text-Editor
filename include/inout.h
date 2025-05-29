@@ -5,9 +5,9 @@
 
 struct Config;
 struct abuf;
-typedef unsigned long size_t;
+enum EditorKey;
 
-int editor_create(struct Config *conf);
+typedef unsigned long size_t;
 
 #define ABUF_INIT \
     { NULL, 0 }
@@ -25,6 +25,7 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab);
 
 int editor_insert_newline(struct Config *conf);
 int editor_scroll(struct Config *conf);
+int editor_cursor_shift(struct Config *conf, enum EditorKey key);
 int editor_cursor_move(struct Config *conf, int key);
 
 int editor_read_key(void);

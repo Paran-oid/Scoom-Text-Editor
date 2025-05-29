@@ -20,14 +20,15 @@ int main(int argc, char* argv[]) {
         editor_open(conf, ptest);
     }
 
-    editor_set_status_message(conf, "HELP: CTRL-S = save | CTRL-Q = Quit");
+    editor_set_status_message(
+        conf, "HELP: CTRL-S = save | CTRL-Q = Quit | CTRL-F = Find");
 
     while (1) {
         editor_refresh_screen(conf);
         editor_process_key_press(conf);
     }
 
-    free(conf);
+    editor_destroy(conf);
     free(temp);
 
     // TODO: organize structure of work and add functions to their respective

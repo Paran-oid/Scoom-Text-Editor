@@ -12,6 +12,47 @@
 #include "operations.h"
 #include "terminal.h"
 
+int editor_create(struct Config* conf) {
+    conf->filename = NULL;
+
+    // status message section
+    conf->sbuf[0] = '\0';
+    conf->sbuf_time = 0;
+
+    // cursor section
+    conf->cx = 0;
+    conf->cy = 0;
+    conf->rx = 0;
+
+    conf->numrows = 0;
+    conf->rows = NULL;
+    conf->rowoff = 0;
+    conf->coloff = 0;
+    conf->dirty = 0;
+    if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
+        0) {
+        return -1;
+    }
+
+    conf->screen_rows -= 2;
+
+    return 0;
+}
+
+int editor_destroy(struct Config* conf) {
+    if (conf->filename) free(conf->filename);
+
+    for (size_t i = 0; i < (size_t)conf->numrows; i++) {
+        free(conf->rows[i].chars);
+        free(conf->rows[i].render);
+    }
+
+    free(conf->rows);
+    free(conf);
+
+    return 0;
+}
+
 int editor_open(struct Config* conf, const char* path) {
     free(conf->filename);
     conf->filename = strdup(path);
@@ -21,7 +62,7 @@ int editor_open(struct Config* conf, const char* path) {
 
     char* line = NULL;
     size_t line_cap = 0;  // size of buf basically
-    size_t line_len = 0;
+    ssize_t line_len = 0;
     while ((line_len = getline(&line, &line_cap, fp)) != -1) {
         // gotta make sure there ain't any \r or \n mfs out there
         while (line_len > 0 &&
@@ -56,7 +97,8 @@ int editor_save(struct Config* conf) {
     if (!fd) return -1;
     // update size of file to one inserted
     if (ftruncate(fd, file_data_size) == -1) return 1;
-    if (write(fd, file_data, file_data_size) != file_data_size) return 1;
+    if ((size_t)write(fd, file_data, file_data_size) != file_data_size)
+        return 1;
 
     editor_set_status_message(conf, "%d bytes written to disk", file_data_size);
 
@@ -76,7 +118,7 @@ int editor_copy(struct Config* conf) {
     if (!pipe) return 1;
 
     struct e_row* row = &conf->rows[conf->cy];
-    if (fwrite(row->chars, sizeof(char), row->size, pipe) < 0) {
+    if (fwrite(row->chars, sizeof(char), row->size, pipe) == 0) {
         pclose(pipe);
         return 2;
     }
@@ -90,12 +132,12 @@ int editor_paste(struct Config* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
     if (!pipe) return 1;
 
-    char* buf;
+    char* content_pasted;
     size_t size = 0;
-    ssize_t len = getline(&buf, &size, pipe);
+    ssize_t len = getline(&content_pasted, &size, pipe);
 
     if (len == -1) {
-        free(buf);
+        free(content_pasted);
         return 2;
     }
 
@@ -105,7 +147,7 @@ int editor_paste(struct Config* conf) {
     char* new_chars = malloc(row->size + len + 1);
 
     strncpy(new_chars, row->chars, conf->cx);
-    strncpy(new_chars + conf->cx, buf, len);
+    strncpy(new_chars + conf->cx, content_pasted, len);
     strncpy(new_chars + conf->cx + len, row->chars + conf->cx,
             row->size - conf->cx);
     new_chars[row->size + len] = '\0';
@@ -121,6 +163,8 @@ int editor_paste(struct Config* conf) {
 
     conf->cx += len;
 
+    free(content_pasted);
+
     return 0;
 }
 int editor_cut(struct Config* conf) {
@@ -128,7 +172,7 @@ int editor_cut(struct Config* conf) {
     if (!pipe) return 1;
 
     struct e_row* row = &conf->rows[conf->cy];
-    if (fwrite(row->chars, sizeof(char), row->size, pipe) < 0) {
+    if (fwrite(row->chars, sizeof(char), row->size, pipe) == 0) {
         pclose(pipe);
         return 2;
     }
@@ -137,5 +181,25 @@ int editor_cut(struct Config* conf) {
 
     editor_delete_row(conf, (intptr_t)(row - conf->rows));
     pclose(pipe);
+    return 0;
+}
+
+int editor_find(struct Config* conf) {
+    char* query = editor_prompt(conf, "Search: %s (ESC to cancel)");
+    if (!query) return 1;
+
+    for (size_t i = 0; i < (size_t)conf->numrows; i++) {
+        struct e_row* row = &conf->rows[i];
+        char* match = strstr(row->render, query);
+        if (match) {
+            conf->cx = editor_update_rx_cx(row, match - row->render);
+            conf->cy = i;
+            conf->rowoff = conf->cy;
+            break;
+        }
+    }
+
+    free(query);
+
     return 0;
 }
