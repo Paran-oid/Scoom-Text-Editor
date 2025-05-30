@@ -11,6 +11,8 @@ void die(const char* s) {
     exit(1);
 }
 
+// MEMORY
+
 int swap(void* a, void* b, size_t elsize) {
     void* temp = malloc(elsize);
 

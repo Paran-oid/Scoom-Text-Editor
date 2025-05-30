@@ -258,10 +258,57 @@ int editor_scroll(struct Config *conf) {
     }
     return 0;
 }
-
 int editor_cursor_shift(struct Config *conf, enum EditorKey key) {
+    struct e_row *row = &conf->rows[conf->cy];
+
+    if (key == CTRL_ARROW_RIGHT) {
+        if (conf->cx == row->size) {
+            conf->cy++;
+            if (conf->cy >= conf->numrows - 1) {
+                conf->cy--;
+                return 1;
+            }
+            conf->cx = 0;
+            row = &conf->rows[conf->cy];
+        }
+
+        while (conf->cx < row->size && !ISCHAR(row->chars[conf->cx]) &&
+               (row->chars[conf->cx] != '_'))
+            conf->cx++;
+
+        while (conf->cx < row->size && ISCHAR(row->chars[conf->cx]) ||
+               (row->chars[conf->cx] == '_'))
+            conf->cx++;
+
+    } else {
+        if (conf->cx == 0) {
+            conf->cy--;
+            if (conf->cy < 0) {
+                conf->cy = 0;
+                return 1;
+            }
+            row = &conf->rows[conf->cy];
+            conf->cx = row->size != 0 ? row->size - 1 : 0;
+        }
+
+        if (conf->cx != 0) {
+            conf->cx--;
+            while (conf->cx > 0 && !ISCHAR(row->chars[conf->cx]) &&
+                   (row->chars[conf->cx] != '_'))
+                conf->cx--;
+
+            while (conf->cx > 0 && ISCHAR(row->chars[conf->cx]) ||
+                   (row->chars[conf->cx] == '_'))
+                conf->cx--;
+
+            if (!ISCHAR(row->chars[conf->cx]) &&
+                (row->chars[conf->cx] != '_')) {
+                conf->cx++;
+            }
+        }
+    }
     return 0;
-}  // TODO
+}
 
 int editor_cursor_move(struct Config *conf, int key) {
     struct e_row *row =
@@ -390,9 +437,8 @@ int editor_read_key(void) {
 int editor_process_key_press(struct Config *conf) {
     /*
                 Side Note:
-                        We use int c instead of char c since we have mapped some
-                        keys to values bigger than the max 255
-                        like for ARROWS
+                        We use int c instead of char c since we have mapped
+       some keys to values bigger than the max 255 like for ARROWS
 
     */
 
@@ -402,8 +448,8 @@ int editor_process_key_press(struct Config *conf) {
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     int c = editor_read_key();
 
-    int times = conf->screen_rows;  // this will be needed in case of page up or
-                                    // down basically
+    int times = conf->screen_rows;  // this will be needed in case of page
+                                    // up or down basically
     switch (c) {
         case '\r':
             editor_insert_newline(conf);
@@ -431,9 +477,8 @@ int editor_process_key_press(struct Config *conf) {
             break;
 
         case CTRL_ARROW_LEFT:
-            break;
-
         case CTRL_ARROW_RIGHT:
+            editor_cursor_shift(conf, c);
             break;
 
         case PAGE_UP:
