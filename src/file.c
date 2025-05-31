@@ -81,7 +81,7 @@ int editor_open(struct Config* conf, const char* path) {
 
 int editor_save(struct Config* conf) {
     if (!conf->filename) {
-        conf->filename = editor_prompt(conf, "Save as: %s");
+        conf->filename = editor_prompt(conf, "Save as: %s", NULL);
         if (!conf->filename) {
             editor_set_status_message(conf, "Save aborted...");
             return 1;
@@ -184,22 +184,66 @@ int editor_cut(struct Config* conf) {
     return 0;
 }
 
-int editor_find(struct Config* conf) {
-    char* query = editor_prompt(conf, "Search: %s (ESC to cancel)");
-    if (!query) return 1;
+static void editor_find_callback(struct Config* conf, char* query, int key) {
+    static int last_match = -1;
+    static int direction = 1;
+
+    // direction: 1(forward) / -1(backward)
+    // last_match: -1(not found) / 1(found)
+    if (key == '\r' || key == '\x1b') {
+        // bring back to old state then return
+        last_match = -1;
+        direction = 1;
+        return;
+    } else if (key == ARROW_RIGHT || key == ARROW_DOWN) {
+        direction = 1;
+    } else if (key == ARROW_LEFT || key == ARROW_UP) {
+        direction = -1;
+    } else {
+        // if none just bring back to old state
+        last_match = -1;
+        direction = 1;
+    }
+
+    if (last_match == -1) direction = 1;
+    // index of current row
+    int current = last_match;
 
     for (size_t i = 0; i < (size_t)conf->numrows; i++) {
-        struct e_row* row = &conf->rows[i];
+        current += direction;
+        if (current < 0)
+            current = conf->numrows - 1;
+        else if (current >= conf->numrows)
+            current = 0;
+        // if user tried to go back before the first occurred element
+
+        struct e_row* row = &conf->rows[current];
         char* match = strstr(row->render, query);
         if (match) {
+            last_match = current;
+            conf->cy = current;
             conf->cx = editor_update_rx_cx(row, match - row->render);
-            conf->cy = i;
             conf->rowoff = conf->cy;
             break;
         }
     }
+}
 
-    free(query);
+int editor_find(struct Config* conf) {
+    int saved_cx = conf->cx, saved_cy = conf->cy, saved_rowoff = conf->rowoff,
+        saved_coloff = conf->coloff;
+
+    char* query = editor_prompt(conf, "Search: %s (use ESC/Arrow/Enter)",
+                                editor_find_callback);
+
+    if (query) {
+        free(query);
+    } else {
+        conf->cx = saved_cx;
+        conf->cy = saved_cy;
+        conf->rowoff = saved_rowoff;
+        conf->coloff = saved_coloff;
+    }
 
     return 0;
 }

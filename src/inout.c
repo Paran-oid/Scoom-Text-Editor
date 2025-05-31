@@ -33,7 +33,8 @@ int ab_free(struct abuf *ab) {
     return 0;
 }
 
-char *editor_prompt(struct Config *conf, const char *prompt) {
+char *editor_prompt(struct Config *conf, const char *prompt,
+                    void (*callback)(struct Config *, char *, int)) {
     size_t bufsize = 128;
     size_t buflen = 0;
     char *buf = malloc(bufsize);
@@ -47,11 +48,13 @@ char *editor_prompt(struct Config *conf, const char *prompt) {
         if (c == '\r') {
             if (buflen != 0) {
                 editor_set_status_message(conf, "");
+                if (callback) callback(conf, buf, c);
                 return buf;
             }
 
         } else if (c == '\x1b') {
             editor_set_status_message(conf, "");
+            if (callback) callback(conf, buf, c);
             free(buf);
             return NULL;
         } else if (!iscntrl(c) && c < 128) {
@@ -69,6 +72,8 @@ char *editor_prompt(struct Config *conf, const char *prompt) {
                 buf[--buflen] = '\0';
             }
         }
+
+        if (callback) callback(conf, buf, c);
     }
     return NULL;
 }

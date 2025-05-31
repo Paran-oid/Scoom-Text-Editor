@@ -15,7 +15,8 @@ typedef unsigned long size_t;
 int ab_append(struct abuf *ab, const char *s, size_t len);
 int ab_free(struct abuf *ab);
 
-char *editor_prompt(struct Config *conf, const char *prompt);
+char *editor_prompt(struct Config *conf, const char *prompt,
+                    void (*callback)(struct Config *, char *, int));
 int editor_set_status_message(struct Config *conf, const char *message, ...);
 int editor_refresh_screen(struct Config *conf);
 
