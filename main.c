@@ -5,6 +5,8 @@
 #include "objects.h"
 #include "terminal.h"
 
+#define DEBUG
+
 int main(int argc, char* argv[]) {
     struct Config* conf = malloc(sizeof(struct Config));
 
@@ -13,11 +15,13 @@ int main(int argc, char* argv[]) {
     editor_create(conf);
     term_create(conf);
 
-    char* ptest = "holy_crap.txt";
+#ifdef DEBUG
+    char* ptest = "holy_crap.c";
+    editor_open(conf, ptest);
+
+#endif
     if (argc >= 2) {
         editor_open(conf, argv[1]);
-    } else if (ptest) {
-        editor_open(conf, ptest);
     }
 
     editor_set_status_message(

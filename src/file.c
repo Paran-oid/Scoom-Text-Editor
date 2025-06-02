@@ -7,9 +7,10 @@
 #include <unistd.h>
 
 #include "core.h"
+#include "highlight.h"
 #include "inout.h"
 #include "objects.h"
-#include "operations.h"
+#include "rows.h"
 #include "terminal.h"
 
 int editor_create(struct Config* conf) {
@@ -29,6 +30,7 @@ int editor_create(struct Config* conf) {
     conf->rowoff = 0;
     conf->coloff = 0;
     conf->dirty = 0;
+    conf->syntax = NULL;
     if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
         0) {
         return -1;
@@ -56,6 +58,8 @@ int editor_destroy(struct Config* conf) {
 int editor_open(struct Config* conf, const char* path) {
     free(conf->filename);
     conf->filename = strdup(path);
+
+    editor_syntax_highlight_select(conf);
 
     FILE* fp = fopen(path, "r");
     if (!fp) die("fopen");
@@ -87,6 +91,8 @@ int editor_save(struct Config* conf) {
             return 1;
         }
     }
+
+    editor_syntax_highlight_select(conf);
 
     char* file_data;
     size_t file_data_size;
@@ -155,7 +161,7 @@ int editor_paste(struct Config* conf) {
     free(row->chars);
     row->chars = new_chars;
     row->size = row->size + len;
-    editor_update_row(row);
+    editor_update_row(conf, row);
     conf->dirty = 1;
 
     editor_set_status_message(conf, "pasted %d bytes into buffer",
@@ -185,11 +191,22 @@ int editor_cut(struct Config* conf) {
 }
 
 static void editor_find_callback(struct Config* conf, char* query, int key) {
+    // direction: 1(forward) / -1(backward)
+    // last_match: -1(not found) / 1(found)
+
     static int last_match = -1;
     static int direction = 1;
 
-    // direction: 1(forward) / -1(backward)
-    // last_match: -1(not found) / 1(found)
+    static int saved_hl_line;
+    static char* saved_hl = NULL;
+
+    if (saved_hl) {
+        memcpy(conf->rows[saved_hl_line].hl, saved_hl,
+               conf->rows[saved_hl_line].rsize);
+        free(saved_hl);
+        saved_hl = NULL;
+    }
+
     if (key == '\r' || key == '\x1b') {
         // bring back to old state then return
         last_match = -1;
@@ -224,6 +241,12 @@ static void editor_find_callback(struct Config* conf, char* query, int key) {
             conf->cy = current;
             conf->cx = editor_update_rx_cx(row, match - row->render);
             conf->rowoff = conf->cy;
+
+            saved_hl_line = current;
+            saved_hl = malloc(row->rsize);
+            memcpy(saved_hl, row->hl, row->rsize);
+            memset(&row->hl[match - row->render], HL_MATCH, strlen(query));
+
             break;
         }
     }

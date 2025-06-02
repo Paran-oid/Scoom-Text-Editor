@@ -1,7 +1,6 @@
 #ifndef INOUT_H
 #define INOUT_H
 
-#define CTRL_KEY(c) ((c) & 0x1f)
 
 struct Config;
 struct abuf;

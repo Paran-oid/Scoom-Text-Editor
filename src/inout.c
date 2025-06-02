@@ -11,10 +11,10 @@
 
 #include "core.h"
 #include "file.h"
+#include "highlight.h"
 #include "objects.h"
-#include "operations.h"
+#include "rows.h"
 #include "terminal.h"
-
 /***  Appending buffer section ***/
 
 int ab_append(struct abuf *ab, const char *s, size_t slen) {
@@ -61,7 +61,7 @@ char *editor_prompt(struct Config *conf, const char *prompt,
             // if the character is not a control character and not one of the
             // mapped Keys from objects.h
             if (buflen == bufsize - 1) {
-                // resize buf e(ssentially
+                // resize buf essentially
                 bufsize *= 2;
                 buf = realloc(buf, bufsize);
             }
@@ -147,21 +147,21 @@ int editor_draw_statusbar(struct Config *conf, struct abuf *ab) {
     ab_append(ab, "\x1b[7m", 4);  // invert colors
 
     // text to write inside statusbar
-    char status[64];
-    size_t status_len =
-        snprintf(status, sizeof(status), "%.20s - %d lines %s",
-                 conf->filename ? conf->filename : "No Name", conf->numrows,
-                 conf->dirty ? "(modified)" : "");
+    char status[80], rstatus[80];
+    int status_len = snprintf(status, sizeof(status), "%.20s - %d lines %s",
+                              conf->filename ? conf->filename : "[No Name]",
+                              conf->numrows, conf->dirty ? "(modified)" : "");
 
+    int rstatus_len = snprintf(rstatus, sizeof(rstatus), "%s | %d/%d",
+                               conf->syntax ? conf->syntax->filetype : "no ft",
+                               conf->cy + 1, conf->numrows);
+
+    if (status_len > conf->screen_cols) status_len = conf->screen_cols;
     ab_append(ab, status, status_len);
 
-    char numline[10];
-    int numline_len = snprintf(numline, sizeof(numline), "%d/%d", conf->cy + 1,
-                               conf->numrows);
-
-    while (status_len < (size_t)conf->screen_cols) {
-        if (status_len == (size_t)conf->screen_cols - numline_len) {
-            ab_append(ab, numline, numline_len);
+    while (status_len < conf->screen_cols) {
+        if (conf->screen_cols - status_len == rstatus_len) {
+            ab_append(ab, rstatus, rstatus_len);
             break;
         } else {
             ab_append(ab, " ", 1);
@@ -208,7 +208,32 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
             if (len > conf->screen_cols) {
                 len = conf->screen_cols;
             }
-            ab_append(ab, &conf->rows[filerow].render[conf->coloff], len);
+
+            char *s = &conf->rows[filerow].render[conf->coloff];
+            unsigned char *hl = &conf->rows[filerow].hl[conf->coloff];
+            int current_color = -1;
+
+            for (size_t j = 0; j < (size_t)len; j++) {
+                if (hl[j] == HL_NORMAL) {
+                    if (current_color != -1) {
+                        ab_append(ab, "\x1b[39m", 5);  // white color
+                        current_color = -1;
+                    }
+                    ab_append(ab, &s[j], 1);
+
+                } else {
+                    int color = editor_syntax_to_color_row(hl[j]);
+                    if (color != current_color) {
+                        current_color = color;
+                        char buf[16];
+                        int clen =
+                            snprintf(buf, sizeof(buf), "\x1b[%dm", color);
+                        ab_append(ab, buf, clen);
+                    }
+                    ab_append(ab, &s[j], 1);
+                }
+            }
+            ab_append(ab, "\x1b[39m", 5);  // reset to default color
         }
 
         ab_append(ab, "\x1b[K", 4);  // erase in line command
@@ -233,7 +258,7 @@ int editor_insert_newline(struct Config *conf) {
                                       // so better safe than sorry
         row->size = conf->cx;
         row->chars[row->size] = '\0';
-        editor_update_row(row);
+        editor_update_row(conf, row);
     }
     if (res == 0) {
         conf->cx = 0, conf->cy++;
@@ -267,7 +292,7 @@ int editor_cursor_shift(struct Config *conf, enum EditorKey key) {
     struct e_row *row = &conf->rows[conf->cy];
 
     if (key == CTRL_ARROW_RIGHT) {
-        if (conf->cx == row->size) {
+        if (conf->cx == (int)row->size) {
             conf->cy++;
             if (conf->cy >= conf->numrows - 1) {
                 conf->cy--;
@@ -277,12 +302,12 @@ int editor_cursor_shift(struct Config *conf, enum EditorKey key) {
             row = &conf->rows[conf->cy];
         }
 
-        while (conf->cx < row->size && !ISCHAR(row->chars[conf->cx]) &&
+        while (conf->cx < (int)row->size && !ISCHAR(row->chars[conf->cx]) &&
                (row->chars[conf->cx] != '_'))
             conf->cx++;
 
-        while (conf->cx < row->size && ISCHAR(row->chars[conf->cx]) ||
-               (row->chars[conf->cx] == '_'))
+        while (conf->cx < (int)row->size &&
+               (ISCHAR(row->chars[conf->cx]) || (row->chars[conf->cx] == '_')))
             conf->cx++;
 
     } else {
@@ -302,8 +327,8 @@ int editor_cursor_shift(struct Config *conf, enum EditorKey key) {
                    (row->chars[conf->cx] != '_'))
                 conf->cx--;
 
-            while (conf->cx > 0 && ISCHAR(row->chars[conf->cx]) ||
-                   (row->chars[conf->cx] == '_'))
+            while (conf->cx > 0 && (ISCHAR(row->chars[conf->cx]) ||
+                                    (row->chars[conf->cx] == '_')))
                 conf->cx--;
 
             if (!ISCHAR(row->chars[conf->cx]) &&

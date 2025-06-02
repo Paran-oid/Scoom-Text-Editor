@@ -3,14 +3,16 @@
 
 struct Config;
 struct e_row;
+enum EditorHighlight;
 typedef unsigned long size_t;
 
 int editor_free_row(struct e_row* row);
-int editor_insert_row_char(struct e_row* row, int at, int c);
+int editor_insert_row_char(struct Config* conf,struct e_row* row, int at, int c);
 int editor_delete_row_char(struct Config* conf, struct e_row* row, int at);
 int editor_insert_row(struct Config* conf, int at, const char* content,
                       size_t content_size);
-int editor_update_row(struct e_row* row);
+
+int editor_update_row(struct Config* conf, struct e_row* row);
 int editor_delete_row(struct Config* conf, int at);
 
 int editor_insert_char(struct Config* conf, int c);

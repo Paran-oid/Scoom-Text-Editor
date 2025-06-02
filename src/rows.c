@@ -1,21 +1,23 @@
-#include "operations.h"
+#include "rows.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 #include "core.h"
 #include "file.h"
+#include "highlight.h"
 #include "objects.h"
 #include "terminal.h"
 
 int editor_free_row(struct e_row* row) {
     free(row->chars);
     free(row->render);
-
+    free(row->hl);
     return 0;
 }
 
-int editor_insert_row_char(struct e_row* row, int at, int c) {
+int editor_insert_row_char(struct Config* conf, struct e_row* row, int at,
+                           int c) {
     if (at < 0 || (size_t)at > row->size) {
         return 1;
     }
@@ -27,7 +29,7 @@ int editor_insert_row_char(struct e_row* row, int at, int c) {
     row->chars[at] = c;
 
     row->size++;
-    editor_update_row(row);
+    editor_update_row(conf, row);
 
     return 0;
 }
@@ -37,7 +39,7 @@ int editor_delete_row_char(struct Config* conf, struct e_row* row, int at) {
 
     memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
     row->size--;
-    editor_update_row(row);
+    editor_update_row(conf, row);
     conf->dirty = 1;
 
     return 0;
@@ -59,16 +61,17 @@ int editor_insert_row(struct Config* conf, int at, const char* content,
 
     conf->rows[at].render = NULL;
     conf->rows[at].rsize = 0;
+    conf->rows[at].hl = NULL;
 
     conf->numrows++;
 
     conf->dirty = 1;
-    editor_update_row(&conf->rows[at]);
+    editor_update_row(conf, &conf->rows[at]);
 
     return 0;
 }
 
-int editor_update_row(struct e_row* row) {
+int editor_update_row(struct Config* conf, struct e_row* row) {
     free(row->render);
 
     // we need to check how much memory to allocate for the renderer
@@ -100,6 +103,8 @@ int editor_update_row(struct e_row* row) {
 
     row->rsize = n;
     row->render[n] = '\0';
+
+    editor_update_syntax(conf, row);
     return 0;
 }
 
@@ -117,11 +122,12 @@ int editor_insert_char(struct Config* conf, int c) {
     if (conf->cy == conf->numrows)
         editor_insert_row(conf, conf->numrows, "", 0);
     conf->dirty = 1;
-    return editor_insert_row_char(&conf->rows[conf->cy], conf->cx++, c);
+    return editor_insert_row_char(conf, &conf->rows[conf->cy], conf->cx++, c);
 }
 
 int editor_delete_char(struct Config* conf) {
-    if (conf->cy == conf->numrows) return 1;
+    // make sure we're not at end of file or at beginning of first line
+    if (conf->cy == conf->numrows || (conf->cx == 0 && conf->cy == 0)) return 1;
     if (conf->cx > 0) {
         return editor_delete_row_char(conf, &conf->rows[conf->cy], --conf->cx);
     } else {
@@ -165,7 +171,7 @@ int editor_row_append_string(struct Config* conf, struct e_row* row, char* s,
     memcpy(&row->chars[row->size], s, slen);
     row->size += slen;
     row->chars[row->size] = '\0';
-    editor_update_row(row);
+    editor_update_row(conf, row);
     conf->dirty = 1;
 
     return 0;
@@ -186,7 +192,7 @@ int editor_update_rx_cx(struct e_row* row, int rx) {
     int curr_rx = 0;
     int cx = 0;
 
-    for (; cx < row->size; cx++) {
+    for (; cx < (int)row->size; cx++) {
         if (row->chars[cx] == '\t') {
             curr_rx += (TAB_SIZE - 1) - (curr_rx % TAB_SIZE);
         }

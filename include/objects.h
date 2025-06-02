@@ -20,6 +20,7 @@ struct abuf {
 struct e_row {
     char* chars;
     size_t size;
+    unsigned char* hl;  // stands for highlighting
 
     char* render;
     size_t rsize;
@@ -46,6 +47,7 @@ struct Config {
     // file handling
     char* filename;
     struct e_row* rows;
+    struct EditorSyntax* syntax;
     int numrows;
     int rowoff, coloff;
     unsigned int dirty : 1;
@@ -70,6 +72,14 @@ enum EditorKey {
     HOME_KEY,
     DEL_KEY,
     END_KEY
+};
+
+enum EditorHighlight { HL_NORMAL = 0, HL_NUMBER, HL_MATCH };
+
+struct EditorSyntax {
+    char* filetype;
+    char** filematch;
+    int flags;
 };
 
 #endif
