@@ -74,12 +74,22 @@ enum EditorKey {
     END_KEY
 };
 
-enum EditorHighlight { HL_NORMAL = 0, HL_NUMBER, HL_MATCH };
+enum EditorHighlight {
+    HL_NORMAL = 0,
+    HL_NUMBER,
+    HL_MATCH,
+    HL_STRING,
+    HL_COMMENT,
+    HL_KEYWORD1,
+    HL_KEYWORD2
+};
 
 struct EditorSyntax {
     char* filetype;
     char** filematch;
+    char** keywords;
     int flags;
+    char* singleline_comment_start;
 };
 
 #endif

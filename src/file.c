@@ -178,14 +178,30 @@ int editor_cut(struct Config* conf) {
     if (!pipe) return 1;
 
     struct e_row* row = &conf->rows[conf->cy];
-    if (fwrite(row->chars, sizeof(char), row->size, pipe) == 0) {
+    if (fwrite(row->chars, sizeof(char), row->size, pipe) < 0) {
         pclose(pipe);
         return 2;
     }
 
-    editor_set_status_message(conf, "cut %d bytes into buffer", row->size);
+    size_t rowsize = row->size;
 
-    editor_delete_row(conf, (intptr_t)(row - conf->rows));
+    if (conf->cy == 0) {
+        if (conf->rows[conf->cy].size == 0) {
+            return 1;
+        } else {
+            editor_delete_row(conf, 0);
+            editor_insert_row(conf, 0, "", 0);
+            conf->cx = 0;
+        }
+    };
+
+    editor_set_status_message(conf, "cut %d bytes into buffer", rowsize);
+
+    if (conf->cy != 0) {
+        editor_delete_row(conf, (intptr_t)(row - conf->rows));
+        conf->cy--;
+    }
+
     pclose(pipe);
     return 0;
 }
