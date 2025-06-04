@@ -214,7 +214,7 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
             int current_color = -1;
 
             for (size_t j = 0; j < (size_t)len; j++) {
-                if (iscntrl(s[j])) {  // TODO
+                if (iscntrl(s[j])) {
                     char sym = (s[j] <= 26) ? '@' + s[j] : '?';
                     ab_append(ab, "\x1b[7m", 4);
                     ab_append(ab, &sym, 1);
