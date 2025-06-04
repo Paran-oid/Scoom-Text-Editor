@@ -1,6 +1,7 @@
 #ifndef OBJECTS_H
 #define OBJECTS_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <termios.h>
 
@@ -18,12 +19,14 @@ struct abuf {
 
 // editor row
 struct e_row {
+    int idx;
     char* chars;
     size_t size;
     unsigned char* hl;  // stands for highlighting
 
     char* render;
     size_t rsize;
+    bool hl_open_comment;
 };
 
 struct Config {
@@ -80,6 +83,7 @@ enum EditorHighlight {
     HL_MATCH,
     HL_STRING,
     HL_COMMENT,
+    HL_MCOMMENT,
     HL_KEYWORD1,
     HL_KEYWORD2
 };
@@ -90,6 +94,8 @@ struct EditorSyntax {
     char** keywords;
     int flags;
     char* singleline_comment_start;
+    char* multiline_comment_start;
+    char* multiline_comment_end;
 };
 
 #endif

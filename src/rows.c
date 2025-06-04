@@ -54,6 +54,11 @@ int editor_insert_row(struct Config* conf, int at, const char* content,
     memmove(&conf->rows[at + 1], &conf->rows[at],
             sizeof(struct e_row) * (conf->numrows - at));
 
+    for (int j = at + 1; j <= conf->numrows; j++) {
+        conf->rows[j].idx++;
+    }
+
+    conf->rows[at].idx = at;
     conf->rows[at].size = content_len;
     conf->rows[at].chars = calloc(content_len + 1, sizeof(char));
     memcpy(conf->rows[at].chars, content, content_len);
@@ -62,6 +67,7 @@ int editor_insert_row(struct Config* conf, int at, const char* content,
     conf->rows[at].render = NULL;
     conf->rows[at].rsize = 0;
     conf->rows[at].hl = NULL;
+    conf->rows[at].hl_open_comment = false;
 
     conf->numrows++;
 
@@ -113,6 +119,9 @@ int editor_delete_row(struct Config* conf, int at) {
     editor_free_row(&conf->rows[at]);
     memmove(&conf->rows[at], &conf->rows[at + 1],
             sizeof(struct e_row) * (conf->numrows - at - 1));
+    for (int j = at; j < conf->numrows - 1; j++) {
+        conf->rows[j].idx--;
+    }
     conf->numrows--;
     conf->dirty = 1;
     return 0;

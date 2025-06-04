@@ -11,6 +11,7 @@
 #define HL_HIGHLIGHT_NUMBERS (1 << 0)
 #define HL_HIGHLIGHT_STRINGS (1 << 1)
 #define HL_HIGHLIGHT_COMMENTS (1 << 2)
+#define HL_HIGHLIGHT_MCOMMENTS (1 << 3)
 
 // init of database
 char* C_HL_EXTENSIONS[] = {".c", ".h", ".cpp", NULL};
@@ -21,13 +22,11 @@ char* C_HL_KEYWORDS[] = {"switch",    "if",      "while",   "for",    "break",
                          "unsigned|", "signed|", "void|",   NULL};
 
 // HLDB: highlight database
-struct EditorSyntax HLDB[] = {{
-    "C",
-    C_HL_EXTENSIONS,
-    C_HL_KEYWORDS,
-    HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS | HL_HIGHLIGHT_COMMENTS,
-    "//",
-}};
+struct EditorSyntax HLDB[] = {{"C", C_HL_EXTENSIONS, C_HL_KEYWORDS,
+                               HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS |
+                                   HL_HIGHLIGHT_COMMENTS |
+                                   HL_HIGHLIGHT_MCOMMENTS,
+                               "//", "/*", "*/"}};
 
 #define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 
@@ -44,6 +43,8 @@ int editor_syntax_to_color_row(enum EditorHighlight hl) {
         case HL_STRING:
             return 35;
         case HL_COMMENT:
+            return 36;
+        case HL_MCOMMENT:
             return 36;
         case HL_KEYWORD1:
             return 33;
@@ -94,21 +95,49 @@ int editor_update_syntax(struct Config* conf, struct e_row* row) {
     if (!conf->syntax) return 1;
 
     char* scs = conf->syntax->singleline_comment_start;
-    int scs_len = scs ? strlen(scs) : 0;
+    char* mcs = conf->syntax->multiline_comment_start;
+    char* mce = conf->syntax->multiline_comment_end;
+
+    size_t scs_len = scs ? strlen(scs) : 0;
+    size_t mcs_len = mcs ? strlen(mcs) : 0;
+    size_t mce_len = mcs ? strlen(mce) : 0;
 
     size_t i = 0;
     bool prev_separator = true;
+    bool in_comment =
+        (row->idx > 0 && conf->rows[row->idx - 1].hl_open_comment);
+
     int in_string = 0;
 
     while (i < row->size) {
         char c = row->render[i];
         unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
 
-        if (scs_len && !in_string) {
+        if (scs_len && !in_string && !in_comment) {
             // if we have a comment
             if (strncmp(&row->chars[i], scs, scs_len) == 0) {
                 memset(&row->hl[i], HL_COMMENT, row->size - i);
                 break;
+            }
+        }
+
+        if (mcs_len && mce_len && !in_string) {
+            if (in_comment) {
+                row->hl[i] = HL_MCOMMENT;
+                if (strncmp(&row->render[i], mce, mce_len) == 0) {
+                    memset(&row->hl[i], HL_MCOMMENT, mce_len);
+                    i += mce_len;
+                    in_comment = false;
+                    prev_separator = true;
+                    continue;
+                } else {
+                    i++;
+                    continue;
+                }
+            } else if (strncmp(&row->render[i], mcs, mcs_len) == 0) {
+                i += mcs_len;
+                in_comment = true;
+                continue;
             }
         }
 
@@ -166,6 +195,12 @@ int editor_update_syntax(struct Config* conf, struct e_row* row) {
 
         prev_separator = is_separator((unsigned char)c);
         i++;
+    }
+
+    int changed = (row->hl_open_comment != in_comment);
+    row->hl_open_comment = in_comment;
+    if (changed && row->idx + 1 < conf->numrows) {
+        editor_update_syntax(conf, row + 1);
     }
     return 0;
 }

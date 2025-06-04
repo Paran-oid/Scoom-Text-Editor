@@ -216,6 +216,17 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
             for (size_t j = 0; j < (size_t)len; j++) {
                 if (iscntrl(s[j])) {  // TODO
                     char sym = (s[j] <= 26) ? '@' + s[j] : '?';
+                    ab_append(ab, "\x1b[7m", 4);
+                    ab_append(ab, &sym, 1);
+                    ab_append(ab, "\x1b[m", 3);
+
+                    if (current_color != -1) {
+                        char buf[16];
+                        size_t clen = snprintf(buf, sizeof(buf), "\x1b[%dm",
+                                               current_color);
+                        ab_append(ab, buf, clen);
+                    }
+
                 } else if (hl[j] == HL_NORMAL) {
                     if (current_color != -1) {
                         ab_append(ab, "\x1b[39m", 5);  // white color
