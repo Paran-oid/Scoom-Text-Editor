@@ -203,17 +203,38 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
                 ab_append(ab, "~", 1);
             }
         } else {
-            int len = conf->rows[filerow].rsize - conf->coloff;
-            if (len < 0) len = 0;
-            if (len > conf->screen_cols) {
-                len = conf->screen_cols;
+            int rowlen = conf->rows[filerow].rsize - conf->coloff;
+            if (rowlen < 0) rowlen = 0;
+            if (rowlen > conf->screen_cols) {
+                rowlen = conf->screen_cols;
             }
 
-            char *s = &conf->rows[filerow].render[conf->coloff];
+            // numline section
+            int filerow_num = conf->rows[filerow].idx + 1;
+            int filerow_count_digits = count_digits(filerow_num);
+            char offset[16];
+            int offset_size =
+                snprintf(offset, sizeof(offset), "%d ", filerow_num);
+
+            // appending numline to buff
+
+            char *s =
+                calloc(offset_size + conf->rows[filerow].rsize, sizeof(char));
+            memcpy(s, offset, offset_size);
+            memcpy(s + offset_size, &conf->rows[filerow].render[conf->coloff],
+                   conf->rows[filerow].rsize);
+
+            // highlighting and control section
+            // char *s = &conf->rows[filerow].render[conf->coloff];
             unsigned char *hl = &conf->rows[filerow].hl[conf->coloff];
             int current_color = -1;
 
-            for (size_t j = 0; j < (size_t)len; j++) {
+            for (int j = 0; j < rowlen + offset_size; j++) {
+                if (j < offset_size) {
+                    ab_append(ab, &s[j], 1);
+                    continue;
+                }
+
                 if (iscntrl(s[j])) {
                     char sym = (s[j] <= 26) ? '@' + s[j] : '?';
                     ab_append(ab, "\x1b[7m", 4);
@@ -227,7 +248,7 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
                         ab_append(ab, buf, clen);
                     }
 
-                } else if (hl[j] == HL_NORMAL) {
+                } else if (hl[j - offset_size] == HL_NORMAL) {
                     if (current_color != -1) {
                         ab_append(ab, "\x1b[39m", 5);  // white color
                         current_color = -1;
@@ -235,7 +256,7 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
                     ab_append(ab, &s[j], 1);
 
                 } else {
-                    int color = editor_syntax_to_color_row(hl[j]);
+                    int color = editor_syntax_to_color_row(hl[j - offset_size]);
                     if (color != current_color) {
                         current_color = color;
                         char buf[16];
@@ -259,22 +280,34 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
 /***  Cursor movement and scrolling section ***/
 
 int editor_insert_newline(struct Config *conf) {
+    struct e_row *row = &conf->rows[conf->cy];
+    int numline_offset_size = count_digits(row->idx + 1) + 1;
+
+    // TODO: make sure when you start from an empty file there won't be any bug
     int res;
-    if (conf->cx == 0) {
+    if (conf->cx == numline_offset_size) {
         res = editor_insert_row(conf, conf->cy, "", 0);
     } else {
-        struct e_row *row = &conf->rows[conf->cy];
-        res = editor_insert_row(conf, conf->cy + 1, &row->chars[conf->cx],
-                                row->size - conf->cx);
+        res = editor_insert_row(conf, conf->cy + 1,
+                                &row->chars[conf->cx - numline_offset_size],
+                                row->size - conf->cx + numline_offset_size);
 
         row = &conf->rows[conf->cy];  // realloc could make our pointer invalid
                                       // so better safe than sorry
-        row->size = conf->cx;
+
+        row->size = conf->cx - numline_offset_size;
         row->chars[row->size] = '\0';
         editor_update_row(conf, row);
+
+        // numline could have changed to a bigger degree
+        // so an update is necessary
+        int new_temp = count_digits(row->idx + 2) + 1;
+        if (new_temp != numline_offset_size) {
+            numline_offset_size = new_temp;
+        }
     }
-    if (res == 0) {
-        conf->cx = 0, conf->cy++;
+    if (res == 0 && numline_offset_size) {
+        conf->cx = numline_offset_size, conf->cy++;
     }
     return res;
 }
@@ -357,20 +390,26 @@ int editor_cursor_move(struct Config *conf, int key) {
     struct e_row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
 
+    int numline_offset_size;
+    if (row) {
+        numline_offset_size = count_digits(row->idx + 1) + 1;
+    }
+
+    // make sure the arrows work well
     switch (key) {
         case ARROW_LEFT:
-            if (conf->cx != 0) {
+            if (conf->cx != numline_offset_size) {
                 conf->cx--;
             } else if (conf->cy > 0) {
                 conf->cy--;
-                conf->cx = conf->rows[conf->cy].size;
+                conf->cx = conf->rows[conf->cy].size + numline_offset_size;
             }
             break;
         case ARROW_RIGHT:
-            if (row && conf->cx < (int)row->size) {
+            if (row && conf->cx < (int)row->size + numline_offset_size) {
                 conf->cx++;
             } else if (row && conf->cy < conf->numrows - 1) {
-                conf->cx = 0;
+                conf->cx = numline_offset_size;
                 conf->cy++;
             }
             break;
@@ -385,7 +424,7 @@ int editor_cursor_move(struct Config *conf, int key) {
     }
 
     row = (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
-    if (row && conf->cx > (int)row->size) {
+    if (row && conf->cx > (int)row->size + numline_offset_size) {
         conf->cx = row->size;
     }
 
@@ -573,7 +612,6 @@ int editor_process_key_press(struct Config *conf) {
             break;
         case CTRL_KEY('l'):
         case '\x1b':
-            // TODO
             break;
 
         case CTRL_KEY('s'):
@@ -590,7 +628,6 @@ int editor_process_key_press(struct Config *conf) {
             editor_cut(conf);
             break;
         case CTRL_KEY('f'):
-        case CTRL_KEY('o'):  // TODO: remove me once done with debugging
             editor_find(conf);
             break;
         default:

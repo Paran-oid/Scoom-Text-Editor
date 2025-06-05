@@ -16,6 +16,17 @@ bool is_separator(unsigned char c) {
     return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != NULL;
 }
 
+int count_digits(int n) {
+    if (n == 0) return 1;
+
+    int res = 0;
+    while (n) {
+        n /= 10;
+        res++;
+    }
+    return res;
+}
+
 // MEMORY
 
 int swap(void* a, void* b, size_t elsize) {

@@ -74,7 +74,7 @@ int editor_syntax_highlight_select(struct Config* conf) {
                 (!is_ext && !strcmp(hl_entity->filematch[j], conf->filename))) {
                 conf->syntax = hl_entity;
 
-                for (size_t filerow = 0; filerow < conf->numrows; filerow++) {
+                for (int filerow = 0; filerow < conf->numrows; filerow++) {
                     editor_update_syntax(conf, &conf->rows[filerow]);
                 }
                 return 0;
@@ -164,7 +164,7 @@ int editor_update_syntax(struct Config* conf, struct e_row* row) {
         }
 
         if (conf->syntax->flags & HL_HIGHLIGHT_NUMBERS) {
-            if (isdigit(c) && ((prev_separator || prev_hl == HL_NUMBER)) ||
+            if ((isdigit(c) && (prev_separator || prev_hl == HL_NUMBER)) ||
                 (c == '.' && prev_hl == HL_NUMBER)) {
                 row->hl[i] = HL_NUMBER;
                 prev_separator = false;

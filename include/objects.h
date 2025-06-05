@@ -19,12 +19,12 @@ struct abuf {
 
 // editor row
 struct e_row {
-    int idx;
     char* chars;
-    size_t size;
+    char* render;
     unsigned char* hl;  // stands for highlighting
 
-    char* render;
+    int idx;
+    size_t size;
     size_t rsize;
     bool hl_open_comment;
 };

@@ -130,17 +130,31 @@ int editor_delete_row(struct Config* conf, int at) {
 int editor_insert_char(struct Config* conf, int c) {
     if (conf->cy == conf->numrows)
         editor_insert_row(conf, conf->numrows, "", 0);
+
+    int numline_offset_size = count_digits(conf->rows[conf->cy].idx + 1) + 1;
+
     conf->dirty = 1;
-    return editor_insert_row_char(conf, &conf->rows[conf->cy], conf->cx++, c);
+    int res = editor_insert_row_char(conf, &conf->rows[conf->cy],
+                                     conf->cx - numline_offset_size, c);
+    conf->cx++;
+    return res;
 }
 
 int editor_delete_char(struct Config* conf) {
+    int numline_offset_size = count_digits(conf->rows[conf->cy].idx + 1) + 1;
+
     // make sure we're not at end of file or at beginning of first line
-    if (conf->cy == conf->numrows || (conf->cx == 0 && conf->cy == 0)) return 1;
-    if (conf->cx > 0) {
-        return editor_delete_row_char(conf, &conf->rows[conf->cy], --conf->cx);
+    if (conf->cy == conf->numrows ||
+        (conf->cx == numline_offset_size && conf->cy == 0))
+        return 1;
+
+    if (conf->cx > numline_offset_size) {
+        int res = editor_delete_row_char(conf, &conf->rows[conf->cy],
+                                         conf->cx - numline_offset_size - 1);
+        conf->cx--;
+        return res;
     } else {
-        conf->cx = conf->rows[conf->cy - 1].size;
+        conf->cx = conf->rows[conf->cy - 1].size + numline_offset_size;
         editor_row_append_string(conf, &conf->rows[conf->cy - 1],
                                  conf->rows[conf->cy].chars,
                                  conf->rows[conf->cy].size);

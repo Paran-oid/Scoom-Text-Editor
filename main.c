@@ -35,7 +35,5 @@ int main(int argc, char* argv[]) {
     editor_destroy(conf);
     free(temp);
 
-    // TODO: organize structure of work and add functions to their respective
-    // files...
     return 0;
 }

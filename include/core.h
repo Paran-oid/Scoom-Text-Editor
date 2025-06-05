@@ -12,6 +12,8 @@
 void die(const char* s);
 bool is_separator(unsigned char c);
 
+int count_digits(int n);
+
 /* Memory */
 int swap(void* a, void* b, size_t elsize);
 

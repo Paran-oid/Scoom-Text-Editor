@@ -21,7 +21,7 @@ int editor_create(struct Config* conf) {
     conf->sbuf_time = 0;
 
     // cursor section
-    conf->cx = 0;
+    conf->cx = 2;
     conf->cy = 0;
     conf->rx = 0;
 
@@ -178,7 +178,7 @@ int editor_cut(struct Config* conf) {
     if (!pipe) return 1;
 
     struct e_row* row = &conf->rows[conf->cy];
-    if (fwrite(row->chars, sizeof(char), row->size, pipe) < 0) {
+    if (fwrite(row->chars, sizeof(char), row->size, pipe) == 0) {
         pclose(pipe);
         return 2;
     }
