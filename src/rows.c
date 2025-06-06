@@ -131,9 +131,12 @@ int editor_insert_char(struct Config* conf, int c) {
     if (conf->cy == conf->numrows)
         editor_insert_row(conf, conf->numrows, "", 0);
 
-    int numline_offset_size = count_digits(conf->rows[conf->cy].idx + 1) + 1;
+    int numline_offset_size =
+        editor_row_numline_calculate(&conf->rows[conf->cy]);
 
     conf->dirty = 1;
+    // got to make sure res is correctly calculated because cx could
+    // accidentally touch the numbers part
     int res = editor_insert_row_char(conf, &conf->rows[conf->cy],
                                      conf->cx - numline_offset_size, c);
     conf->cx++;
@@ -141,7 +144,8 @@ int editor_insert_char(struct Config* conf, int c) {
 }
 
 int editor_delete_char(struct Config* conf) {
-    int numline_offset_size = count_digits(conf->rows[conf->cy].idx + 1) + 1;
+    int numline_offset_size =
+        editor_row_numline_calculate(&conf->rows[conf->cy]);
 
     // make sure we're not at end of file or at beginning of first line
     if (conf->cy == conf->numrows ||
@@ -226,4 +230,8 @@ int editor_update_rx_cx(struct e_row* row, int rx) {
     }
 
     return cx;
+}
+
+int editor_row_numline_calculate(struct e_row* row) {
+    return count_digits(row->idx + 1) + 1;
 }

@@ -280,8 +280,14 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
 /***  Cursor movement and scrolling section ***/
 
 int editor_insert_newline(struct Config *conf) {
-    struct e_row *row = &conf->rows[conf->cy];
-    int numline_offset_size = count_digits(row->idx + 1) + 1;
+    struct e_row *row;
+    if (conf->numrows) {
+        row = &conf->rows[conf->cy];
+    } else {
+        editor_insert_row(conf, 0, "", 0);
+        row = &conf->rows[0];
+    }
+    int numline_offset_size = editor_row_numline_calculate(row);
 
     // TODO: make sure when you start from an empty file there won't be any bug
     int res;
@@ -300,7 +306,7 @@ int editor_insert_newline(struct Config *conf) {
         editor_update_row(conf, row);
 
         // numline could have changed to a bigger degree
-        // so an update is necessary
+        // so an update is necessary without the already made up call
         int new_temp = count_digits(row->idx + 2) + 1;
         if (new_temp != numline_offset_size) {
             numline_offset_size = new_temp;
@@ -392,16 +398,17 @@ int editor_cursor_move(struct Config *conf, int key) {
 
     int numline_offset_size;
     if (row) {
-        numline_offset_size = count_digits(row->idx + 1) + 1;
+        numline_offset_size = editor_row_numline_calculate(row);
     }
 
-    // make sure the arrows work well
     switch (key) {
         case ARROW_LEFT:
             if (conf->cx != numline_offset_size) {
                 conf->cx--;
             } else if (conf->cy > 0) {
                 conf->cy--;
+                numline_offset_size =
+                    editor_row_numline_calculate(&conf->rows[conf->cy]);
                 conf->cx = conf->rows[conf->cy].size + numline_offset_size;
             }
             break;
@@ -409,15 +416,27 @@ int editor_cursor_move(struct Config *conf, int key) {
             if (row && conf->cx < (int)row->size + numline_offset_size) {
                 conf->cx++;
             } else if (row && conf->cy < conf->numrows - 1) {
+                row = &conf->rows[++conf->cy];
+                numline_offset_size =
+                    editor_row_numline_calculate(row);  // recalculate it
                 conf->cx = numline_offset_size;
-                conf->cy++;
             }
             break;
         case ARROW_UP:
-            if (conf->cy != 0) conf->cy--;
+            if (conf->cy != 0) {
+                conf->cy--;
+            }
             break;
         case ARROW_DOWN:
-            if (conf->cy < conf->numrows - 1) conf->cy++;
+            if (conf->cy < conf->numrows - 1) {
+                conf->cy++;
+                int new_numline_offset_size =
+                    editor_row_numline_calculate(&conf->rows[conf->cy]);
+                conf->cx = numline_offset_size == new_numline_offset_size
+                               ? conf->cx
+                               : new_numline_offset_size + conf->cx -
+                                     numline_offset_size;
+            }
             break;
         default:
             return 1;

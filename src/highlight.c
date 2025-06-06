@@ -90,9 +90,9 @@ int editor_update_syntax(struct Config* conf, struct e_row* row) {
     row->hl = realloc(row->hl, row->rsize);
     memset(row->hl, HL_NORMAL, row->rsize);
 
-    char** keywords = conf->syntax->keywords;
-
     if (!conf->syntax) return 1;
+
+    char** keywords = conf->syntax->keywords;
 
     char* scs = conf->syntax->singleline_comment_start;
     char* mcs = conf->syntax->multiline_comment_start;
