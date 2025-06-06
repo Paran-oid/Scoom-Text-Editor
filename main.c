@@ -5,7 +5,7 @@
 #include "objects.h"
 #include "terminal.h"
 
-// #define DEBUG
+#define DEBUG
 
 int main(int argc, char* argv[]) {
     struct Config* conf = malloc(sizeof(struct Config));

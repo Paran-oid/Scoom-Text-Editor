@@ -286,6 +286,7 @@ int editor_insert_newline(struct Config *conf) {
     } else {
         editor_insert_row(conf, 0, "", 0);
         row = &conf->rows[0];
+        return 0;
     }
     int numline_offset_size = editor_row_numline_calculate(row);
 
@@ -425,17 +426,27 @@ int editor_cursor_move(struct Config *conf, int key) {
         case ARROW_UP:
             if (conf->cy != 0) {
                 conf->cy--;
+                row = &conf->rows[conf->cy];
+                int new_numline_offset_size = editor_row_numline_calculate(row);
+                conf->cx = numline_offset_size == new_numline_offset_size
+                               ? conf->cx
+                               : new_numline_offset_size + conf->cx -
+                                     numline_offset_size;
+                if (conf->cx >= row->size + new_numline_offset_size)
+                    conf->cx = row->size + new_numline_offset_size;
             }
             break;
         case ARROW_DOWN:
             if (conf->cy < conf->numrows - 1) {
                 conf->cy++;
-                int new_numline_offset_size =
-                    editor_row_numline_calculate(&conf->rows[conf->cy]);
+                row = &conf->rows[conf->cy];
+                int new_numline_offset_size = editor_row_numline_calculate(row);
                 conf->cx = numline_offset_size == new_numline_offset_size
                                ? conf->cx
                                : new_numline_offset_size + conf->cx -
                                      numline_offset_size;
+                if (conf->cx >= row->size + new_numline_offset_size)
+                    conf->cx = row->size + new_numline_offset_size;
             }
             break;
         default:
