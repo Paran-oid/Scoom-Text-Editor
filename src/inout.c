@@ -107,7 +107,7 @@ int editor_refresh_screen(struct Config *conf) {
 
     /*
             Cursor is 1-indexed, so we have to also add 1 for it's coordinates
-       to be valid
+    to be valid
     */
 
     char buf[32];
@@ -139,9 +139,9 @@ int editor_draw_messagebar(struct Config *conf, struct abuf *ab) {
 
 int editor_draw_statusbar(struct Config *conf, struct abuf *ab) {
     /*
-     you could specify all of these attributes using the command <esc>[1;4;5;7m.
-     An argument of 0 clears all attributes, and is the default argument, so we
-     use <esc>[m to go back to normal text formatting.
+    you could specify all of these attributes using the command <esc>[1;4;5;7m.
+    An argument of 0 clears all attributes, and is the default argument, so we
+    use <esc>[m to go back to normal text formatting.
     */
 
     ab_append(ab, "\x1b[7m", 4);  // invert colors
@@ -341,51 +341,64 @@ int editor_scroll(struct Config *conf) {
     }
     return 0;
 }
-int editor_cursor_shift(struct Config *conf, enum EditorKey key) {
+int editor_cursor_ctrl(struct Config *conf, enum EditorKey key) {
+    if (conf->cy < 0 || conf->cy >= conf->numrows) return 1;
+
     struct e_row *row = &conf->rows[conf->cy];
+    int numline_size = editor_row_numline_calculate(row);
 
     if (key == CTRL_ARROW_RIGHT) {
-        if (conf->cx == (int)row->size) {
+        if (conf->cx == (int)row->size + numline_size) {
             conf->cy++;
             if (conf->cy >= conf->numrows - 1) {
                 conf->cy--;
                 return 1;
             }
-            conf->cx = 0;
+            conf->cx = numline_size;
             row = &conf->rows[conf->cy];
         }
 
-        while (conf->cx < (int)row->size && !ISCHAR(row->chars[conf->cx]) &&
-               (row->chars[conf->cx] != '_'))
+        // try to find the first item that is not a char or _
+        while (conf->cx < (int)row->size + numline_size &&
+               !ISCHAR(row->chars[conf->cx - numline_size]) &&
+               (row->chars[conf->cx - numline_size] != '_'))
             conf->cx++;
 
-        while (conf->cx < (int)row->size &&
-               (ISCHAR(row->chars[conf->cx]) || (row->chars[conf->cx] == '_')))
+        while (conf->cx < (int)row->size + numline_size &&
+               (ISCHAR(row->chars[conf->cx - numline_size]) ||
+                (row->chars[conf->cx - numline_size] == '_')))
             conf->cx++;
 
     } else {
-        if (conf->cx == 0) {
+        while (conf->cx != numline_size &&
+               (row->chars[conf->cx - numline_size] == '\t' ||
+                row->chars[conf->cx - numline_size - 1] == '\t'))
+            conf->cx--;
+
+        if (conf->cx == numline_size) {
             conf->cy--;
             if (conf->cy < 0) {
                 conf->cy = 0;
                 return 1;
             }
             row = &conf->rows[conf->cy];
-            conf->cx = row->size != 0 ? row->size - 1 : 0;
+            conf->cx = row->size != 0 ? row->size - 1 : numline_size;
         }
 
-        if (conf->cx != 0) {
+        if (conf->cx != numline_size) {
             conf->cx--;
-            while (conf->cx > 0 && !ISCHAR(row->chars[conf->cx]) &&
-                   (row->chars[conf->cx] != '_'))
+            while (conf->cx > numline_size &&
+                   !ISCHAR(row->chars[conf->cx - numline_size]) &&
+                   (row->chars[conf->cx - numline_size] != '_'))
                 conf->cx--;
 
-            while (conf->cx > 0 && (ISCHAR(row->chars[conf->cx]) ||
-                                    (row->chars[conf->cx] == '_')))
+            while (conf->cx > numline_size &&
+                   (ISCHAR(row->chars[conf->cx - numline_size]) ||
+                    (row->chars[conf->cx - numline_size] == '_')))
                 conf->cx--;
 
-            if (!ISCHAR(row->chars[conf->cx]) &&
-                (row->chars[conf->cx] != '_')) {
+            if (!ISCHAR(row->chars[conf->cx - numline_size]) &&
+                (row->chars[conf->cx - numline_size] != '_')) {
                 conf->cx++;
             }
         }
@@ -404,7 +417,8 @@ int editor_cursor_move(struct Config *conf, int key) {
 
     switch (key) {
         case ARROW_LEFT:
-            if (conf->cx != numline_offset_size) {
+            if (conf->cx != numline_offset_size &&
+                row->chars[conf->cx - numline_offset_size - 1] != '\t') {
                 conf->cx--;
             } else if (conf->cy > 0) {
                 conf->cy--;
@@ -452,10 +466,14 @@ int editor_cursor_move(struct Config *conf, int key) {
         default:
             return 1;
     }
-
     row = (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     if (row && conf->cx > (int)row->size + numline_offset_size) {
         conf->cx = row->size;
+    }
+
+    // make sure cursor not on tab
+    while (row->chars[conf->cx - numline_offset_size] == '\t') {
+        conf->cx++;
     }
 
     return 0;
@@ -550,7 +568,7 @@ int editor_process_key_press(struct Config *conf) {
     /*
                 Side Note:
                         We use int c instead of char c since we have mapped
-       some keys to values bigger than the max 255 like for ARROWS
+    some keys to values bigger than the max 255 like for ARROWS
 
     */
 
@@ -590,7 +608,7 @@ int editor_process_key_press(struct Config *conf) {
 
         case CTRL_ARROW_LEFT:
         case CTRL_ARROW_RIGHT:
-            editor_cursor_shift(conf, c);
+            editor_cursor_ctrl(conf, c);
             break;
 
         case PAGE_UP:

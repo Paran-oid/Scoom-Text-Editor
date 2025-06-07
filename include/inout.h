@@ -1,7 +1,6 @@
 #ifndef INOUT_H
 #define INOUT_H
 
-
 struct Config;
 struct abuf;
 enum EditorKey;
@@ -25,7 +24,7 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab);
 
 int editor_insert_newline(struct Config *conf);
 int editor_scroll(struct Config *conf);
-int editor_cursor_shift(struct Config *conf, enum EditorKey key);
+int editor_cursor_cursor(struct Config *conf, enum EditorKey key);
 int editor_cursor_move(struct Config *conf, int key);
 
 int editor_read_key(void);

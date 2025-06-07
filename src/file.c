@@ -149,13 +149,19 @@ int editor_paste(struct Config* conf) {
 
     pclose(pipe);
 
+    if (conf->cy == conf->numrows) {
+        editor_insert_row(conf, conf->cy, "", 0);
+    }
     struct e_row* row = &conf->rows[conf->cy];
     char* new_chars = malloc(row->size + len + 1);
+    int numline_size = editor_row_numline_calculate(row);
 
-    strncpy(new_chars, row->chars, conf->cx);
-    strncpy(new_chars + conf->cx, content_pasted, len);
-    strncpy(new_chars + conf->cx + len, row->chars + conf->cx,
-            row->size - conf->cx);
+    int before = conf->cx - numline_size;
+
+    strncpy(new_chars, row->chars, before);            // copy before cursor
+    strncpy(new_chars + before, content_pasted, len);  // copy content pasted
+    strncpy(new_chars + before + len, row->chars + before,
+            row->size - before);  // copy rest of the string
     new_chars[row->size + len] = '\0';
 
     free(row->chars);

@@ -109,7 +109,7 @@ int editor_update_syntax(struct Config* conf, struct e_row* row) {
 
     int in_string = 0;
 
-    while (i < row->size) {
+    while (i < row->rsize) {
         char c = row->render[i];
         unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
 
@@ -154,7 +154,7 @@ int editor_update_syntax(struct Config* conf, struct e_row* row) {
                 prev_separator = 1;
                 continue;
             } else {
-                if (c == '"' || c == '\'') {
+                if (c == '"' || c == '\'' || c == '\"') {
                     in_string = c;
                     row->hl[i] = HL_STRING;
                     i++;
