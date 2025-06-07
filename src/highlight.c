@@ -5,8 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "config.h"
 #include "core.h"
-#include "objects.h"
+#include "rows.h"
 
 #define HL_HIGHLIGHT_NUMBERS (1 << 0)
 #define HL_HIGHLIGHT_STRINGS (1 << 1)

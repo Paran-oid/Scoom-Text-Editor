@@ -15,11 +15,15 @@ set(
 	src 
 	main.c
 	src/terminal.c
-	src/inout.c
+	src/render.c
 	src/file.c
 	src/rows.c
 	src/core.c
 	src/highlight.c
+	src/config.c
+	src/input.c
+	src/buffer.c
+	src/config.c
 )
 
 add_executable(SCOOM ${src})

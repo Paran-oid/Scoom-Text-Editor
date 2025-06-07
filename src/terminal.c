@@ -7,9 +7,8 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "config.h"
 #include "core.h"
-#include "inout.h"
-#include "objects.h"
 
 /*
         usage of each macro (BRKINT, ICRNL, INPCK, ...) can be understood in

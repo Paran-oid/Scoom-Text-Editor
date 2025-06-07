@@ -3,10 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "config.h"
 #include "core.h"
 #include "file.h"
 #include "highlight.h"
-#include "objects.h"
 #include "terminal.h"
 
 int editor_free_row(struct e_row* row) {
