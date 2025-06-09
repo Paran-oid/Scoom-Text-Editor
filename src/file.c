@@ -42,6 +42,33 @@ int editor_open(struct Config* conf, const char* path) {
     return 0;
 }
 
+int editor_run(struct Config* conf) {
+    config_create(conf);
+    term_create(conf);
+
+#ifdef DEBUG
+
+    if (editor_open(conf, "test.c") != 0) {
+        config_destroy(conf);
+        return EXIT_FAILURE;
+    }
+
+#endif
+
+    editor_set_status_message(
+        conf, "HELP: CTRL-S = save | CTRL-Q = Quit | CTRL-F = Find");
+
+    while (1) {
+        editor_refresh_screen(conf);
+        editor_process_key_press(conf);
+    }
+}
+
+int editor_destroy(struct Config* conf) {
+    config_destroy(conf);
+    return 0;
+}
+
 int editor_save(struct Config* conf) {
     if (!conf->filename) {
         conf->filename = editor_prompt(conf, "Save as: %s", NULL);
