@@ -5,3 +5,4 @@ backup
 
 CMakePresets.json
 compile_commands.json
+curr_proj.code-workspace

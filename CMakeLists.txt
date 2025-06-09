@@ -10,9 +10,8 @@ endif()
 # important for Clang
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(include_dir include)
-set(
-	src 
+set(include_dir include include/dsa)
+set(src
 	main.c
 	src/terminal.c
 	src/render.c
@@ -24,6 +23,8 @@ set(
 	src/input.c
 	src/buffer.c
 	src/config.c
+
+	src/dsa/dlist.c
 )
 
 add_executable(SCOOM ${src})
