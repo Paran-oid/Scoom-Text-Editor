@@ -2,7 +2,7 @@
 
 ## section 1
 
-- Implement redo and undo functionalities (use some sort of stack)
+- Implement redo and undo functionalities (using doubly linked list for both redo, undo and storing older states ****someh**ow**)
 
 ## section 2
 

@@ -10,6 +10,9 @@
 #define QUIT_TIMES 3
 #define IDENT_SIZE 4
 
+struct State;
+struct DList;
+
 struct Config {
     // termios related
     struct termios termios;
@@ -18,11 +21,9 @@ struct Config {
     char sbuf[80];  // status buffer
     time_t sbuf_time;
 
-    // cursor positions non rendered
+    // cursor related
     int cx;
     int cy;
-
-    // cursor positions rendered
     int rx;
 
     int screen_rows;
@@ -35,6 +36,9 @@ struct Config {
     int numrows;
     int rowoff, coloff;
     unsigned int dirty : 1;
+
+    // saves state of application for undo and redos and so forth
+    struct DList* history;
 };
 
 int config_create(struct Config* conf);

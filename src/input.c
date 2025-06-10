@@ -2,10 +2,12 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "config.h"
 #include "core.h"
+#include "dlist.h"
 #include "file.h"
 #include "rows.h"
 
@@ -14,7 +16,6 @@ int editor_cursor_ctrl(struct Config *conf, enum EditorKey key) {
 
     struct e_row *row = &conf->rows[conf->cy];
     int numline_size = editor_row_numline_calculate(row);
-
     if (key == CTRL_ARROW_RIGHT) {
         if (conf->cx == (int)row->size + numline_size) {
             conf->cy++;
@@ -238,7 +239,9 @@ int editor_process_key_press(struct Config *conf) {
 
     */
 
+    struct State *s;
     static int quit_times = QUIT_TIMES;
+    static time_t last_change = 0;
 
     struct e_row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
@@ -345,7 +348,18 @@ int editor_process_key_press(struct Config *conf) {
             editor_find(conf);
             break;
         default:
+            last_change = time(NULL);
+
+            s = malloc(sizeof(struct State));
+            s->cx = conf->cx;
+            s->cy = conf->cy;
+            s->text = strdup(conf->rows[conf->cy].chars);
+            s->type = STATE_INSERT;
+
             editor_insert_char(conf, c);
+
+            list_insert_after(conf->history, NULL, s);
+            ;
             break;
     }
 

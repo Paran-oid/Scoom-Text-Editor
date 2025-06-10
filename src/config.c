@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 
+#include "dlist.h"
 #include "rows.h"
 #include "terminal.h"
 
@@ -23,6 +24,7 @@ int config_create(struct Config* conf) {
     conf->coloff = 0;
     conf->dirty = 0;
     conf->syntax = NULL;
+    conf->history = malloc(sizeof(struct DList));
     if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
         0) {
         return -1;
@@ -41,6 +43,7 @@ int config_destroy(struct Config* conf) {
         free(conf->rows[i].render);
     }
 
+    free(conf->history);
     free(conf->rows);
     free(conf);
 
