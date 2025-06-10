@@ -32,11 +32,11 @@ struct DList {
 
 int node_create(struct DListNode* node, struct DListNode* next,
                 struct DListNode* prev, void* data, size_t elsize);
-int list_create(struct DList* list, size_t elsize, int (*destroy)(void*),
-                int (*cmp)(const void*, const void*));
-int list_insert_after(struct DList* list, struct DListNode* prev_node,
-                      const void* data);
-int list_remove(struct DList* list, struct DListNode* node, void** data);
-int list_free(struct DList* list);
+int dlist_create(struct DList* list, size_t elsize, int (*destroy)(void*),
+                 int (*cmp)(const void*, const void*));
+int dlist_insert_after(struct DList* list, struct DListNode* prev_node,
+                       const void* data);
+int dlist_remove(struct DList* list, struct DListNode* node, void** data);
+int dlist_free(struct DList* list);
 
 #endif

@@ -18,8 +18,8 @@ int node_create(struct DListNode* node, struct DListNode* next,
     return EXIT_SUCCESS;
 }
 
-int list_create(struct DList* list, size_t elsize, int (*destroy)(void*),
-                int (*cmp)(const void*, const void*)) {
+int dlist_create(struct DList* list, size_t elsize, int (*destroy)(void*),
+                 int (*cmp)(const void*, const void*)) {
     if (!list) return EXIT_FAILURE;
 
     list->head = list->tail = NULL;
@@ -32,8 +32,8 @@ int list_create(struct DList* list, size_t elsize, int (*destroy)(void*),
     return EXIT_SUCCESS;
 }
 
-int list_insert_after(struct DList* list, struct DListNode* prev_node,
-                      const void* data) {
+int dlist_insert_after(struct DList* list, struct DListNode* prev_node,
+                       const void* data) {
     if (!list || !data) return EXIT_FAILURE;
 
     struct DListNode* node = malloc(sizeof(struct DListNode));
@@ -73,7 +73,7 @@ int list_insert_after(struct DList* list, struct DListNode* prev_node,
     return EXIT_SUCCESS;
 }
 
-int list_remove(struct DList* list, struct DListNode* node, void** data) {
+int dlist_remove(struct DList* list, struct DListNode* node, void** data) {
     if (!list || !list->head) return EXIT_FAILURE;
 
     struct DListNode* to_remove;
@@ -108,12 +108,12 @@ int list_remove(struct DList* list, struct DListNode* node, void** data) {
     return EXIT_SUCCESS;
 }
 
-int list_free(struct DList* list) {
+int dlist_free(struct DList* list) {
     if (!list) return EXIT_FAILURE;
 
     if (list->destroy) {
         while (list->size) {
-            list_remove(list, NULL, NULL);
+            dlist_remove(list, NULL, NULL);
         }
     }
 

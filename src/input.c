@@ -239,7 +239,7 @@ int editor_process_key_press(struct Config *conf) {
 
     */
 
-    struct State *s;
+    struct State s;
     static int quit_times = QUIT_TIMES;
     static time_t last_change = 0;
 
@@ -348,18 +348,14 @@ int editor_process_key_press(struct Config *conf) {
             editor_find(conf);
             break;
         default:
-            last_change = time(NULL);
 
-            s = malloc(sizeof(struct State));
-            s->cx = conf->cx;
-            s->cy = conf->cy;
-            s->text = strdup(conf->rows[conf->cy].chars);
-            s->type = STATE_INSERT;
+            last_change = time(NULL);
+            state_create(&s, conf->cx, conf->cy, STATE_INSERT, row->chars,
+                         row->size);
 
             editor_insert_char(conf, c);
+            dlist_insert_after(conf->history, NULL, (const void *)&s);
 
-            list_insert_after(conf->history, NULL, s);
-            ;
             break;
     }
 

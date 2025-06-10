@@ -1,10 +1,21 @@
 #include "config.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "dlist.h"
+#include "file.h"
 #include "rows.h"
 #include "terminal.h"
+
+static int app_free(void* el) {
+    free(el);
+    return 0;
+}
+
+static int app_cmp(const void* str1, const void* str2) {
+    return strcmp((const char*)str1, (const char*)str2);
+}
 
 int config_create(struct Config* conf) {
     conf->filename = NULL;
@@ -24,7 +35,10 @@ int config_create(struct Config* conf) {
     conf->coloff = 0;
     conf->dirty = 0;
     conf->syntax = NULL;
+
     conf->history = malloc(sizeof(struct DList));
+    dlist_create(conf->history, sizeof(struct State), app_free, app_cmp);
+
     if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
         0) {
         return -1;

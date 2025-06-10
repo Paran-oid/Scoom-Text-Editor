@@ -6,7 +6,7 @@
 #include "render.h"
 #include "terminal.h"
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {	
     struct Config* conf = malloc(sizeof(struct Config));
     if (!conf) return EXIT_FAILURE;
 

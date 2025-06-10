@@ -14,6 +14,22 @@
 #include "rows.h"
 #include "terminal.h"
 
+int state_create(struct State* state, int cx, int cy, enum StateType type,
+                 const char* content, size_t size) {
+    state->type = type;
+    state->cx = cx;
+    state->cy = cy;
+    state->text = malloc(size);
+    memcpy(state->text, content, size);
+
+    return 0;
+}
+
+int state_destroy(struct State* state) {
+    free(state->text);
+    return 0;
+}
+
 int editor_open(struct Config* conf, const char* path) {
     free(conf->filename);
     conf->filename = strdup(path);
@@ -100,6 +116,9 @@ int editor_save(struct Config* conf) {
 
     return 0;
 }
+
+int editor_undo(struct Config* conf) { return 0; }
+int editor_redo(struct Config* conf) { return 0; }
 
 int editor_copy(struct Config* conf) {
     /*
