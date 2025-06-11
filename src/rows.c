@@ -22,6 +22,7 @@ int editor_insert_row_char(struct Config* conf, struct Row* row, int at,
         return EXIT_FAILURE;
     }
     // n stands for new for now
+    // TODO: fucking problem here man
     char* new_chars = realloc(row->chars, row->size + 1);
     if (!new_chars) return EXIT_FAILURE;
     row->chars = new_chars;
