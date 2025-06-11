@@ -50,7 +50,7 @@ int editor_cursor_ctrl(struct Config *conf, enum EditorKey key) {
                 return EXIT_FAILURE;
             }
             row = &conf->rows[conf->cy];
-            conf->cx = row->size != 0 ? row->size - 1 : numline_size;
+            conf->cx = row->size != 0 ? (int)row->size - 1 : numline_size;
         }
 
         if (conf->cx != numline_size) {
@@ -78,7 +78,7 @@ int editor_cursor_move(struct Config *conf, int key) {
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
 
-    int numline_offset_size;
+    int numline_offset_size = 0;
     if (row) {
         numline_offset_size = editor_row_numline_calculate(row);
     }
@@ -114,7 +114,7 @@ int editor_cursor_move(struct Config *conf, int key) {
                                ? conf->cx
                                : new_numline_offset_size + conf->cx -
                                      numline_offset_size;
-                if (conf->cx >= row->size + new_numline_offset_size)
+                if (conf->cx >= (int)row->size + new_numline_offset_size)
                     conf->cx = row->size + new_numline_offset_size;
             }
             break;
@@ -127,7 +127,7 @@ int editor_cursor_move(struct Config *conf, int key) {
                                ? conf->cx
                                : new_numline_offset_size + conf->cx -
                                      numline_offset_size;
-                if (conf->cx >= row->size + new_numline_offset_size)
+                if (conf->cx >= (int)row->size + new_numline_offset_size)
                     conf->cx = row->size + new_numline_offset_size;
             }
             break;
@@ -240,7 +240,7 @@ int editor_process_key_press(struct Config *conf) {
 
     struct State *s;
     static int quit_times = QUIT_TIMES;
-    static time_t last_change = 0;
+    // static time_t last_change = 0;
 
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
@@ -249,7 +249,7 @@ int editor_process_key_press(struct Config *conf) {
     int times = conf->screen_rows;  // this will be needed in case of page
                                     // up or down basically
 
-    last_change = time(NULL);  // TODO
+    // last_change = time(NULL);  // TODO
 
     switch (c) {
         case '\r':

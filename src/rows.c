@@ -22,7 +22,6 @@ int editor_insert_row_char(struct Config* conf, struct Row* row, int at,
         return EXIT_FAILURE;
     }
     // n stands for new for now
-    // TODO: fucking problem here man
     char* new_chars = realloc(row->chars, row->size + 1);
     if (!new_chars) return EXIT_FAILURE;
     row->chars = new_chars;
@@ -80,7 +79,6 @@ int editor_insert_row(struct Config* conf, int at, const char* content,
 
 int editor_update_row(struct Config* conf, struct Row* row) {
     free(row->render);
-
     // we need to check how much memory to allocate for the renderer
     int tabs = 0;
     size_t n = 0;

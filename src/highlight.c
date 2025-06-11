@@ -115,8 +115,8 @@ int editor_update_syntax(struct Config* conf, struct Row* row) {
         unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
 
         if (scs_len && !in_string && !in_comment) {
-            // if we have a comment
-            if (strncmp(&row->chars[i], scs, scs_len) == 0) {
+            if (i + scs_len <= row->size &&
+                strncmp(&row->chars[i], scs, scs_len) == 0) {
                 memset(&row->hl[i], HL_COMMENT, row->size - i);
                 break;
             }

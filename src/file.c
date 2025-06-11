@@ -22,8 +22,9 @@ int state_create(struct Config* conf, struct State* state,
 
     struct Row* row = &conf->rows[conf->cy];
 
-    state->text = malloc(row->size);
-    memcpy(state->text, row->chars, row->size + 1);
+    state->text = malloc(row->size + 1);
+    memcpy(state->text, row->chars, row->size);
+    state->text[row->size] = '\0';
     state->text_size = row->size;
 
     return EXIT_SUCCESS;

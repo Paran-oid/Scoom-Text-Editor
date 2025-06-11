@@ -196,7 +196,6 @@ int editor_draw_rows(struct Config *conf, struct ABuf *ab) {
 
             // numline section
             int filerow_num = conf->rows[filerow].idx + 1;
-            int filerow_count_digits = count_digits(filerow_num);
             char offset[16];
             int offset_size =
                 snprintf(offset, sizeof(offset), "%d ", filerow_num);

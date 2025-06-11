@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.10.0)
 project(SCOOM VERSION 0.1.0 LANGUAGES C)
 
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -fsanitize=address -fsanitize=undefined -fstack-protector -g -fno-omit-frame-pointer -O2 -D_FORTIFY_SOURCE=2")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -fsanitize=address -fsanitize=undefined -fstack-protector -g -fno-omit-frame-pointer -O2 -D_FORTIFY_SOURCE=2")
 
 add_subdirectory(lib/DSA)
 
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-	#set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} O3 -DNDEBUG")
+	set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} O3 -DNDEBUG")
 endif()
 
 # important for Clang

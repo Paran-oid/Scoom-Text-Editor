@@ -2,7 +2,7 @@
 
 ## section 1
 
-- Consider implementing redo and undo with stacks and not doubly linked lists !!!
+- fix issue where new line spawns out of nowhere when getting to edge of string
 - Implement redo and undo functionalities (using doubly linked list for both redo, undo and storing older states somehow)
 
 ## section 2
