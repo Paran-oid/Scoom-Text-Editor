@@ -1,7 +1,7 @@
 #ifndef HIGHLIGHT_H
 #define HIGHLIGHT_H
 
-struct e_row;
+struct Row;
 struct Config;
 
 enum EditorHighlight {
@@ -27,6 +27,6 @@ struct EditorSyntax {
 
 int editor_syntax_highlight_select(struct Config* conf);
 int editor_syntax_to_color_row(enum EditorHighlight row);
-int editor_update_syntax(struct Config* conf, struct e_row* row);
+int editor_update_syntax(struct Config* conf, struct Row* row);
 
 #endif

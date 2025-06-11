@@ -14,20 +14,24 @@
 #include "rows.h"
 #include "terminal.h"
 
-int state_create(struct State* state, int cx, int cy, enum StateType type,
-                 const char* content, size_t size) {
+int state_create(struct Config* conf, struct State* state,
+                 enum StateType type) {
     state->type = type;
-    state->cx = cx;
-    state->cy = cy;
-    state->text = malloc(size);
-    memcpy(state->text, content, size);
+    state->cx = conf->cx;
+    state->cy = conf->cy;
 
-    return 0;
+    struct Row* row = &conf->rows[conf->cy];
+
+    state->text = malloc(row->size);
+    memcpy(state->text, row->chars, row->size + 1);
+    state->text_size = row->size;
+
+    return EXIT_SUCCESS;
 }
 
 int state_destroy(struct State* state) {
     free(state->text);
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int editor_open(struct Config* conf, const char* path) {
@@ -55,7 +59,7 @@ int editor_open(struct Config* conf, const char* path) {
     free(line);
     fclose(fp);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int editor_run(struct Config* conf) {
@@ -82,7 +86,7 @@ int editor_run(struct Config* conf) {
 
 int editor_destroy(struct Config* conf) {
     config_destroy(conf);
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int editor_save(struct Config* conf) {
@@ -114,11 +118,37 @@ int editor_save(struct Config* conf) {
     close(fd);
     free(file_data);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
-int editor_undo(struct Config* conf) { return 0; }
-int editor_redo(struct Config* conf) { return 0; }
+int editor_undo(struct Config* conf) {
+    if (stack_size(conf->stack_undo) == 0) return EXIT_FAILURE;
+
+    struct State *popped_state, *current_state;
+
+    current_state = malloc(sizeof(struct State));
+    state_create(conf, current_state, STATE_INSERT);
+    stack_push(conf->stack_redo, current_state);
+
+    stack_pop(conf->stack_undo, (void**)&popped_state);
+    conf_to_state_update(conf, popped_state);
+
+    return EXIT_SUCCESS;
+}
+int editor_redo(struct Config* conf) {
+    if (stack_size(conf->stack_redo) == 0) return EXIT_FAILURE;
+
+    struct State *popped_state, *current_state;
+
+    current_state = malloc(sizeof(struct State));
+    state_create(conf, current_state, STATE_INSERT);
+    stack_push(conf->stack_undo, current_state);
+
+    stack_pop(conf->stack_redo, (void**)&popped_state);
+    conf_to_state_update(conf, popped_state);
+
+    return EXIT_SUCCESS;
+}
 
 int editor_copy(struct Config* conf) {
     /*
@@ -128,7 +158,7 @@ int editor_copy(struct Config* conf) {
     FILE* pipe = popen("xclip -selection clipboard", "w");
     if (!pipe) return 1;
 
-    struct e_row* row = &conf->rows[conf->cy];
+    struct Row* row = &conf->rows[conf->cy];
     if (fwrite(row->chars, sizeof(char), row->size, pipe) == 0) {
         pclose(pipe);
         return 2;
@@ -136,7 +166,7 @@ int editor_copy(struct Config* conf) {
 
     editor_set_status_message(conf, "copied %d bytes into buffer", row->size);
     pclose(pipe);
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int editor_paste(struct Config* conf) {
@@ -157,7 +187,7 @@ int editor_paste(struct Config* conf) {
     if (conf->cy == conf->numrows) {
         editor_insert_row(conf, conf->cy, "", 0);
     }
-    struct e_row* row = &conf->rows[conf->cy];
+    struct Row* row = &conf->rows[conf->cy];
     char* new_chars = malloc(row->size + len + 1);
     int numline_size = editor_row_numline_calculate(row);
 
@@ -182,13 +212,13 @@ int editor_paste(struct Config* conf) {
 
     free(content_pasted);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 int editor_cut(struct Config* conf) {
     FILE* pipe = popen("xclip -selection clipboard", "w");
     if (!pipe) return 1;
 
-    struct e_row* row = &conf->rows[conf->cy];
+    struct Row* row = &conf->rows[conf->cy];
     if (fwrite(row->chars, sizeof(char), row->size, pipe) == 0) {
         pclose(pipe);
         return 2;
@@ -214,7 +244,7 @@ int editor_cut(struct Config* conf) {
     }
 
     pclose(pipe);
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 static void editor_find_callback(struct Config* conf, char* query, int key) {
@@ -261,7 +291,7 @@ static void editor_find_callback(struct Config* conf, char* query, int key) {
             current = 0;
         // if user tried to go back before the first occurred element
 
-        struct e_row* row = &conf->rows[current];
+        struct Row* row = &conf->rows[current];
         char* match = strstr(row->render, query);
         if (match) {
             last_match = current;
@@ -295,5 +325,5 @@ int editor_find(struct Config* conf) {
         conf->coloff = saved_coloff;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }

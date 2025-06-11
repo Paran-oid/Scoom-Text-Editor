@@ -1,6 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <stack.h>
 #include <stdbool.h>
 #include <termios.h>
 #include <time.h>
@@ -31,17 +32,19 @@ struct Config {
 
     // file handling
     char* filename;
-    struct e_row* rows;
+    struct Row* rows;
     struct EditorSyntax* syntax;
     int numrows;
     int rowoff, coloff;
     unsigned int dirty : 1;
 
     // saves state of application for undo and redos and so forth
-    struct DList* history;
+    Stack* stack_undo;
+    Stack* stack_redo;
 };
 
 int config_create(struct Config* conf);
+int conf_to_state_update(struct Config* conf, struct State* state);
 int config_destroy(struct Config* conf);
 
 #endif

@@ -3,14 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "dlist.h"
 #include "file.h"
 #include "rows.h"
 #include "terminal.h"
 
-static int app_free(void* el) {
-    free(el);
-    return 0;
+static void app_destroy(void* el) {
+    struct State* s = (struct State*)el;
+    free(s->text);
+    free(s);
 }
 
 static int app_cmp(const void* str1, const void* str2) {
@@ -36,8 +36,11 @@ int config_create(struct Config* conf) {
     conf->dirty = 0;
     conf->syntax = NULL;
 
-    conf->history = malloc(sizeof(struct DList));
-    dlist_create(conf->history, sizeof(struct State), app_free, app_cmp);
+    conf->stack_undo = malloc(sizeof(Stack));
+    conf->stack_redo = malloc(sizeof(Stack));
+
+    stack_create(conf->stack_undo, app_cmp, app_destroy);
+    stack_create(conf->stack_redo, app_cmp, app_destroy);
 
     if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
         0) {
@@ -46,7 +49,26 @@ int config_create(struct Config* conf) {
 
     conf->screen_rows -= 2;
 
-    return 0;
+    return EXIT_SUCCESS;
+}
+
+int conf_to_state_update(struct Config* conf, struct State* state) {
+    if (state->cy == conf->numrows) return EXIT_FAILURE;
+
+    conf->cx = state->cx;
+    conf->cy = state->cy;
+
+    struct Row* row = &conf->rows[conf->cy];
+    free(row->chars);
+
+    row->chars = malloc(state->text_size + 1);
+    memcpy(row->chars, state->text,
+           state->text_size + 1);  // + 1 for null terminator
+    row->size = state->text_size;
+
+    editor_update_row(conf, row);
+
+    return EXIT_SUCCESS;
 }
 
 int config_destroy(struct Config* conf) {
@@ -57,9 +79,11 @@ int config_destroy(struct Config* conf) {
         free(conf->rows[i].render);
     }
 
-    free(conf->history);
+    stack_destroy(conf->stack_redo);
+    stack_destroy(conf->stack_undo);
+
     free(conf->rows);
     free(conf);
 
-    return 0;
+    return EXIT_SUCCESS;
 }

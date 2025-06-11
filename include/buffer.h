@@ -2,12 +2,12 @@
 #define BUFFER_H
 
 #include <stddef.h>
-struct abuf {
+struct ABuf {
     char *buf;
     int len;
 };
 
-int ab_append(struct abuf *ab, const char *s, size_t len);
-int ab_free(struct abuf *ab);
+int ab_append(struct ABuf *ab, const char *s, size_t len);
+int ab_free(struct ABuf *ab);
 
 #endif

@@ -62,7 +62,7 @@ int editor_syntax_highlight_select(struct Config* conf) {
     */
 
     conf->syntax = NULL;
-    if (conf->filename == NULL) return 1;
+    if (conf->filename == NULL) return EXIT_FAILURE;
 
     char* ext = strstr(conf->filename, ".");
 
@@ -78,20 +78,20 @@ int editor_syntax_highlight_select(struct Config* conf) {
                 for (int filerow = 0; filerow < conf->numrows; filerow++) {
                     editor_update_syntax(conf, &conf->rows[filerow]);
                 }
-                return 0;
+                return EXIT_SUCCESS;
             }
             j++;
         }
     }
 
-    return 1;
+    return EXIT_FAILURE;
 }
 
-int editor_update_syntax(struct Config* conf, struct e_row* row) {
+int editor_update_syntax(struct Config* conf, struct Row* row) {
     row->hl = realloc(row->hl, row->rsize);
     memset(row->hl, HL_NORMAL, row->rsize);
 
-    if (!conf->syntax) return 1;
+    if (!conf->syntax) return EXIT_FAILURE;
 
     char** keywords = conf->syntax->keywords;
 
@@ -203,5 +203,5 @@ int editor_update_syntax(struct Config* conf, struct e_row* row) {
     if (changed && row->idx + 1 < conf->numrows) {
         editor_update_syntax(conf, row + 1);
     }
-    return 0;
+    return EXIT_SUCCESS;
 }

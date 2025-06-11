@@ -7,21 +7,20 @@
 
 #include "config.h"
 #include "core.h"
-#include "dlist.h"
 #include "file.h"
 #include "rows.h"
 
 int editor_cursor_ctrl(struct Config *conf, enum EditorKey key) {
-    if (conf->cy < 0 || conf->cy >= conf->numrows) return 1;
+    if (conf->cy < 0 || conf->cy >= conf->numrows) return EXIT_FAILURE;
 
-    struct e_row *row = &conf->rows[conf->cy];
+    struct Row *row = &conf->rows[conf->cy];
     int numline_size = editor_row_numline_calculate(row);
     if (key == CTRL_ARROW_RIGHT) {
         if (conf->cx == (int)row->size + numline_size) {
             conf->cy++;
             if (conf->cy >= conf->numrows - 1) {
                 conf->cy--;
-                return 1;
+                return EXIT_FAILURE;
             }
             conf->cx = numline_size;
             row = &conf->rows[conf->cy];
@@ -48,7 +47,7 @@ int editor_cursor_ctrl(struct Config *conf, enum EditorKey key) {
             conf->cy--;
             if (conf->cy < 0) {
                 conf->cy = 0;
-                return 1;
+                return EXIT_FAILURE;
             }
             row = &conf->rows[conf->cy];
             conf->cx = row->size != 0 ? row->size - 1 : numline_size;
@@ -72,11 +71,11 @@ int editor_cursor_ctrl(struct Config *conf, enum EditorKey key) {
             }
         }
     }
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int editor_cursor_move(struct Config *conf, int key) {
-    struct e_row *row =
+    struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
 
     int numline_offset_size;
@@ -133,7 +132,7 @@ int editor_cursor_move(struct Config *conf, int key) {
             }
             break;
         default:
-            return 1;
+            return EXIT_FAILURE;
     }
     row = (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     if (row && conf->cx > (int)row->size + numline_offset_size) {
@@ -145,7 +144,7 @@ int editor_cursor_move(struct Config *conf, int key) {
         conf->cx++;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int editor_read_key(void) {
@@ -228,7 +227,7 @@ int editor_read_key(void) {
         return c;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int editor_process_key_press(struct Config *conf) {
@@ -239,16 +238,19 @@ int editor_process_key_press(struct Config *conf) {
 
     */
 
-    struct State s;
+    struct State *s;
     static int quit_times = QUIT_TIMES;
     static time_t last_change = 0;
 
-    struct e_row *row =
+    struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     int c = editor_read_key();
 
     int times = conf->screen_rows;  // this will be needed in case of page
                                     // up or down basically
+
+    last_change = time(NULL);  // TODO
+
     switch (c) {
         case '\r':
             editor_insert_newline(conf);
@@ -321,10 +323,10 @@ int editor_process_key_press(struct Config *conf) {
                                           "Press CTRL-Q %d time(s) to leave",
                                           quit_times);
                 quit_times--;
-                return 0;
+                return EXIT_SUCCESS;
             }
-            if (write(STDOUT_FILENO, "\x1b[2J", 4) == 0) return 1;
-            if (write(STDOUT_FILENO, "\x1b[H", 3) == 0) return 1;
+            if (write(STDOUT_FILENO, "\x1b[2J", 4) == 0) return EXIT_FAILURE;
+            if (write(STDOUT_FILENO, "\x1b[H", 3) == 0) return EXIT_FAILURE;
             exit(1);
             break;
         case CTRL_KEY('l'):
@@ -347,32 +349,35 @@ int editor_process_key_press(struct Config *conf) {
         case CTRL_KEY('f'):
             editor_find(conf);
             break;
+        case CTRL_KEY('z'):
+            editor_undo(conf);
+            break;
+        case CTRL_KEY('y'):
+            editor_redo(conf);
+            break;
         default:
+            s = malloc(sizeof(struct State));
+            state_create(conf, s, STATE_INSERT);
 
-            last_change = time(NULL);
-            state_create(&s, conf->cx, conf->cy, STATE_INSERT, row->chars,
-                         row->size);
-
+            stack_push(conf->stack_undo, s);
             editor_insert_char(conf, c);
-            dlist_insert_after(conf->history, NULL, (const void *)&s);
-
             break;
     }
 
     // we reset if user entered something else than a CTRL-Q
     quit_times = QUIT_TIMES;
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int editor_insert_newline(struct Config *conf) {
-    struct e_row *row;
+    struct Row *row;
     if (conf->numrows) {
         row = &conf->rows[conf->cy];
     } else {
         editor_insert_row(conf, 0, "", 0);
         row = &conf->rows[0];
-        return 0;
+        return EXIT_SUCCESS;
     }
     int numline_offset_size = editor_row_numline_calculate(row);
 

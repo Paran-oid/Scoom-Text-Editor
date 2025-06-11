@@ -2,7 +2,8 @@
 
 ## section 1
 
-- Implement redo and undo functionalities (using doubly linked list for both redo, undo and storing older states ****someh**ow**)
+- Consider implementing redo and undo with stacks and not doubly linked lists !!!
+- Implement redo and undo functionalities (using doubly linked list for both redo, undo and storing older states somehow)
 
 ## section 2
 

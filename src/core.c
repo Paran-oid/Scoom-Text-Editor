@@ -17,7 +17,7 @@ bool is_separator(unsigned char c) {
 }
 
 int count_digits(int n) {
-    if (n == 0) return 1;
+    if (n == 0) return EXIT_FAILURE;
 
     int res = 0;
     while (n) {
@@ -38,5 +38,5 @@ int swap(void* a, void* b, size_t elsize) {
 
     free(temp);
 
-    return 0;
+    return EXIT_SUCCESS;
 }

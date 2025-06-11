@@ -11,14 +11,14 @@ enum StateType { STATE_DELETE, STATE_INSERT };
 
 struct State {
     char* text;
+    size_t text_size;
     enum StateType type;
 
     int cx;
     int cy;
 };
 
-int state_create(struct State* state, int cx, int cy, enum StateType type,
-                 const char* content, size_t size);
+int state_create(struct Config* conf,struct State* state, enum StateType type);
 int state_destroy(struct State* state);
 
 int editor_open(struct Config* conf, const char* path);

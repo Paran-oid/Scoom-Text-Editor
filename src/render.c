@@ -70,7 +70,7 @@ int editor_set_status_message(struct Config *conf, const char *fmt, ...) {
     va_end(ap);
     conf->sbuf_time = time(NULL);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 /***  Screen display and rendering section ***/
@@ -78,7 +78,7 @@ int editor_set_status_message(struct Config *conf, const char *fmt, ...) {
 int editor_refresh_screen(struct Config *conf) {
     editor_scroll(conf);
 
-    struct abuf ab = ABUF_INIT;
+    struct ABuf ab = ABUF_INIT;
     ab_append(&ab, "\x1b[6 q", 5);
     ab_append(&ab, "\x1b[?25l", 6);  // hide cursor
     ab_append(&ab, "\x1b[H", 3);     // move top left
@@ -102,14 +102,14 @@ int editor_refresh_screen(struct Config *conf) {
     ab_append(&ab, buf, strlen(buf));
 
     if (write(STDOUT_FILENO, ab.buf, ab.len) == 0) {
-        return 1;
+        return EXIT_FAILURE;
     }
 
     ab_free(&ab);
-    return 0;
+    return EXIT_SUCCESS;
 }
 
-int editor_draw_messagebar(struct Config *conf, struct abuf *ab) {
+int editor_draw_messagebar(struct Config *conf, struct ABuf *ab) {
     ab_append(ab, "\x1b[K", 3);  // we clear current line in terminal
     size_t message_len = strlen(conf->sbuf);
     if (message_len > (size_t)conf->screen_cols)
@@ -119,10 +119,10 @@ int editor_draw_messagebar(struct Config *conf, struct abuf *ab) {
     if (message_len && time(NULL) - conf->sbuf_time < 5)
         ab_append(ab, conf->sbuf, message_len);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
-int editor_draw_statusbar(struct Config *conf, struct abuf *ab) {
+int editor_draw_statusbar(struct Config *conf, struct ABuf *ab) {
     /*
     you could specify all of these attributes using the command <esc>[1;4;5;7m.
     An argument of 0 clears all attributes, and is the default argument, so we
@@ -157,10 +157,10 @@ int editor_draw_statusbar(struct Config *conf, struct abuf *ab) {
     ab_append(ab, "\r\n", 2);
     ab_append(ab, "\x1b[m", 3);  // returns to normal
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
-int editor_draw_rows(struct Config *conf, struct abuf *ab) {
+int editor_draw_rows(struct Config *conf, struct ABuf *ab) {
     for (size_t y = 0; y < (size_t)conf->screen_rows; y++) {
         int filerow = y + conf->rowoff;
         if (filerow >= conf->numrows) {
@@ -259,7 +259,7 @@ int editor_draw_rows(struct Config *conf, struct abuf *ab) {
         ab_append(ab, "\r\n", 2);
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int editor_scroll(struct Config *conf) {
@@ -282,5 +282,5 @@ int editor_scroll(struct Config *conf) {
     if (conf->cy >= conf->rowoff + conf->screen_rows) {
         conf->rowoff = conf->cy - conf->screen_rows + 1;
     }
-    return 0;
+    return EXIT_SUCCESS;
 }
