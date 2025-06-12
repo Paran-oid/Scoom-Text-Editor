@@ -138,10 +138,11 @@ int editor_cursor_move(struct Config *conf, int key) {
     if (row && conf->cx > (int)row->size + numline_offset_size) {
         conf->cx = row->size;
     }
-
     // make sure cursor not on tab
-    while (row->chars[conf->cx - numline_offset_size] == '\t') {
+    size_t index = conf->cx - numline_offset_size;
+    while (index < row->size && row->chars[index] == '\t') {
         conf->cx++;
+        index = conf->cx - numline_offset_size;
     }
 
     return EXIT_SUCCESS;

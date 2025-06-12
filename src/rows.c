@@ -38,7 +38,7 @@ int editor_insert_row_char(struct Config* conf, struct Row* row, int at,
 int editor_delete_row_char(struct Config* conf, struct Row* row, int at) {
     if (at < 0 || (size_t)at > row->size) return EXIT_FAILURE;
 
-    memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
+    memmove(&row->chars[at], &row->chars[at + 1], row->size - at - 1);
     row->size--;
     editor_update_row(conf, row);
     conf->dirty = 1;
@@ -205,8 +205,10 @@ int editor_row_append_string(struct Config* conf, struct Row* row, char* s,
 
 int editor_update_cx_rx(struct Row* row, int cx) {
     int rx = 0;
+
+    // numline offset effect
     for (size_t j = 0; j < (size_t)cx; j++) {
-        if (row->chars[j] == '\t') {
+        if (j < row->size && row->chars[j] == '\t') {
             rx += (TAB_SIZE - 1) - (rx % TAB_SIZE);
         }
         rx++;
@@ -231,6 +233,7 @@ int editor_update_rx_cx(struct Row* row, int rx) {
     return cx;
 }
 
+// numline has a variable length so we need a respective function for it
 int editor_row_numline_calculate(struct Row* row) {
     return count_digits(row->idx + 1) + 1;
 }

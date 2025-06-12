@@ -209,7 +209,6 @@ int editor_draw_rows(struct Config *conf, struct ABuf *ab) {
                    conf->rows[filerow].rsize);
 
             // highlighting and control section
-            // char *s = &conf->rows[filerow].render[conf->coloff];
             unsigned char *hl = &conf->rows[filerow].hl[conf->coloff];
             int current_color = -1;
 
@@ -251,9 +250,9 @@ int editor_draw_rows(struct Config *conf, struct ABuf *ab) {
                     ab_append(ab, &s[j], 1);
                 }
             }
+            free(s);
             ab_append(ab, "\x1b[39m", 5);  // reset to default color
         }
-
         ab_append(ab, "\x1b[K", 4);  // erase in line command
         ab_append(ab, "\r\n", 2);
     }
