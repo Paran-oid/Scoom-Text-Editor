@@ -208,10 +208,12 @@ int editor_update_cx_rx(struct Row* row, int cx) {
 
     // numline offset effect
     for (size_t j = 0; j < (size_t)cx; j++) {
-        if (j < row->size && row->chars[j] == '\t') {
-            rx += (TAB_SIZE - 1) - (rx % TAB_SIZE);
+        if (j < row->size) {
+            if (row->chars[j] == '\t') {
+                rx += (TAB_SIZE - 1) - (rx % TAB_SIZE);
+            }
+            rx++;
         }
-        rx++;
     }
     return rx;
 }

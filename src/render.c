@@ -261,9 +261,17 @@ int editor_draw_rows(struct Config *conf, struct ABuf *ab) {
 }
 
 int editor_scroll(struct Config *conf) {
-    conf->rx = 0;
+    struct Row *row;
+    row = &conf->rows[conf->cy];
+
+    int numline_size = editor_row_numline_calculate(row);
+    conf->rx = conf->cx;
+
     if (conf->cy < conf->numrows) {
-        conf->rx = editor_update_cx_rx(&conf->rows[conf->cy], conf->cx);
+        conf->rx =
+            editor_update_cx_rx(&conf->rows[conf->cy], conf->cx - numline_size);
+        conf->rx += numline_size +
+                    conf->coloff;  // I don't know what I am doing I am sorry 😭
     }
 
     if (conf->rx < conf->coloff) {

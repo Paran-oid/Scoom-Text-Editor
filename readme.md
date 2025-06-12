@@ -2,8 +2,9 @@
 
 ## section 1
 
-- fix issue where new line spawns out of nowhere when getting to edge of string
-- Implement redo and undo functionalities (using doubly linked list for both redo, undo and storing older states somehow)
+- Fix editor scroll function problem when text gets out of screen
+- Enable strict debugging stuff again
+- Implement redo and undo functionalities (using stacks for both redo, undo and storing older states somehow)
 
 ## section 2
 

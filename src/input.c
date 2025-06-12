@@ -85,14 +85,14 @@ int editor_cursor_move(struct Config *conf, int key) {
 
     switch (key) {
         case ARROW_LEFT:
-            if (conf->cx != numline_offset_size &&
-                row->chars[conf->cx - numline_offset_size - 1] != '\t') {
+            if (conf->cx != numline_offset_size) {
                 conf->cx--;
-            } else if (conf->cy > 0) {
+            } else {
                 conf->cy--;
-                numline_offset_size =
-                    editor_row_numline_calculate(&conf->rows[conf->cy]);
-                conf->cx = conf->rows[conf->cy].size + numline_offset_size;
+                row =
+                    (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
+                numline_offset_size = editor_row_numline_calculate(row);
+                conf->cx = row->size + numline_offset_size;
             }
             break;
         case ARROW_RIGHT:
@@ -103,6 +103,7 @@ int editor_cursor_move(struct Config *conf, int key) {
                 numline_offset_size =
                     editor_row_numline_calculate(row);  // recalculate it
                 conf->cx = numline_offset_size;
+                conf->coloff = 0;
             }
             break;
         case ARROW_UP:
@@ -137,12 +138,6 @@ int editor_cursor_move(struct Config *conf, int key) {
     row = (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     if (row && conf->cx > (int)row->size + numline_offset_size) {
         conf->cx = row->size;
-    }
-    // make sure cursor not on tab
-    size_t index = conf->cx - numline_offset_size;
-    while (index < row->size && row->chars[index] == '\t') {
-        conf->cx++;
-        index = conf->cx - numline_offset_size;
     }
 
     return EXIT_SUCCESS;
