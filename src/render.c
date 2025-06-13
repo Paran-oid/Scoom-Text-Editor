@@ -188,25 +188,24 @@ int editor_draw_rows(struct Config *conf, struct ABuf *ab) {
                 ab_append(ab, "~", 1);
             }
         } else {
-            int rowlen = conf->rows[filerow].rsize - conf->coloff;
-            if (rowlen < 0) rowlen = 0;
-            if (rowlen > conf->screen_cols) {
-                rowlen = conf->screen_cols;
-            }
-
             // numline section
             int filerow_num = conf->rows[filerow].idx + 1;
             char offset[16];
             int offset_size =
                 snprintf(offset, sizeof(offset), "%d ", filerow_num);
 
+            int rowlen = conf->rows[filerow].rsize - conf->coloff;
+            if (rowlen < 0) rowlen = 0;
+            if (rowlen > conf->screen_cols - offset_size) {
+                rowlen = conf->screen_cols - offset_size;
+            }
+
             // appending numline to buff
 
-            char *s =
-                calloc(offset_size + conf->rows[filerow].rsize, sizeof(char));
+            char *s = calloc(offset_size + rowlen, sizeof(char));
             memcpy(s, offset, offset_size);
             memcpy(s + offset_size, &conf->rows[filerow].render[conf->coloff],
-                   conf->rows[filerow].rsize);
+                   rowlen);
 
             // highlighting and control section
             unsigned char *hl = &conf->rows[filerow].hl[conf->coloff];
@@ -270,12 +269,11 @@ int editor_scroll(struct Config *conf) {
     if (conf->cy < conf->numrows) {
         conf->rx =
             editor_update_cx_rx(&conf->rows[conf->cy], conf->cx - numline_size);
-        conf->rx += numline_size +
-                    conf->coloff;  // I don't know what I am doing I am sorry 😭
+        conf->rx += numline_size;  // I don't know what I am doing I am sorry 😭
     }
 
-    if (conf->rx < conf->coloff) {
-        conf->coloff = conf->rx;
+    if (conf->rx < conf->coloff + numline_size) {
+        conf->coloff = conf->rx - numline_size;
     }
 
     if (conf->rx >= conf->screen_cols + conf->coloff) {

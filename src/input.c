@@ -83,11 +83,17 @@ int editor_cursor_move(struct Config *conf, int key) {
         numline_offset_size = editor_row_numline_calculate(row);
     }
 
+    int desired_cx_logical = conf->cx - numline_offset_size;
+
     switch (key) {
         case ARROW_LEFT:
             if (conf->cx != numline_offset_size) {
+                if (conf->coloff != 0 &&
+                    conf->cx == numline_offset_size + conf->coloff) {
+                    conf->coloff--;
+                }
                 conf->cx--;
-            } else {
+            } else if (conf->cy > 0) {
                 conf->cy--;
                 row =
                     (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
@@ -103,33 +109,26 @@ int editor_cursor_move(struct Config *conf, int key) {
                 numline_offset_size =
                     editor_row_numline_calculate(row);  // recalculate it
                 conf->cx = numline_offset_size;
-                conf->coloff = 0;
             }
             break;
         case ARROW_UP:
-            if (conf->cy != 0) {
+            if (conf->cy > 0) {
                 conf->cy--;
                 row = &conf->rows[conf->cy];
-                int new_numline_offset_size = editor_row_numline_calculate(row);
-                conf->cx = numline_offset_size == new_numline_offset_size
-                               ? conf->cx
-                               : new_numline_offset_size + conf->cx -
-                                     numline_offset_size;
-                if (conf->cx >= (int)row->size + new_numline_offset_size)
-                    conf->cx = row->size + new_numline_offset_size;
+                numline_offset_size = editor_row_numline_calculate(row);
+                if (desired_cx_logical > row->size)
+                    desired_cx_logical = row->size;
+                conf->cx = numline_offset_size + desired_cx_logical;
             }
             break;
         case ARROW_DOWN:
             if (conf->cy < conf->numrows - 1) {
                 conf->cy++;
                 row = &conf->rows[conf->cy];
-                int new_numline_offset_size = editor_row_numline_calculate(row);
-                conf->cx = numline_offset_size == new_numline_offset_size
-                               ? conf->cx
-                               : new_numline_offset_size + conf->cx -
-                                     numline_offset_size;
-                if (conf->cx >= (int)row->size + new_numline_offset_size)
-                    conf->cx = row->size + new_numline_offset_size;
+                numline_offset_size = editor_row_numline_calculate(row);
+                if (desired_cx_logical > row->size)
+                    desired_cx_logical = row->size;
+                conf->cx = numline_offset_size + desired_cx_logical;
             }
             break;
         default:
