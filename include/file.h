@@ -6,6 +6,7 @@
 #include <stddef.h>
 
 struct Config;
+struct ABuf;
 
 enum StateType { STATE_DELETE, STATE_INSERT };
 
@@ -18,7 +19,8 @@ struct State {
     int cy;
 };
 
-int state_create(struct Config* conf,struct State* state, enum StateType type);
+int state_create(struct Config* conf, struct State* state, const char* buf,
+                 size_t size, enum StateType type);
 int state_destroy(struct State* state);
 
 int editor_open(struct Config* conf, const char* path);

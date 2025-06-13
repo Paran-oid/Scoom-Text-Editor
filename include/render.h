@@ -7,9 +7,6 @@ enum EditorKey;
 
 typedef unsigned long size_t;
 
-#define ABUF_INIT \
-    { NULL, 0 }
-
 int editor_refresh_screen(struct Config *conf);
 int editor_scroll(struct Config *conf);
 

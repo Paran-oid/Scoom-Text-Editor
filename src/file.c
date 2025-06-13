@@ -14,16 +14,16 @@
 #include "rows.h"
 #include "terminal.h"
 
-int state_create(struct Config* conf, struct State* state,
-                 enum StateType type) {
+int state_create(struct Config* conf, struct State* state, const char* buf,
+                 size_t size, enum StateType type) {
     state->type = type;
     state->cx = conf->cx;
     state->cy = conf->cy;
 
     struct Row* row = &conf->rows[conf->cy];
 
-    state->text = malloc(row->size + 1);
-    memcpy(state->text, row->chars, row->size);
+    state->text = malloc(size + 1);
+    memcpy(state->text, buf, size);
     state->text[row->size] = '\0';
     state->text_size = row->size;
 
@@ -123,30 +123,34 @@ int editor_save(struct Config* conf) {
 }
 
 int editor_undo(struct Config* conf) {
-    if (stack_size(conf->stack_undo) == 0) return EXIT_FAILURE;
+    // TODO
 
-    struct State *popped_state, *current_state;
+    // if (stack_size(conf->stack_undo) == 0) return EXIT_FAILURE;
 
-    current_state = malloc(sizeof(struct State));
-    state_create(conf, current_state, STATE_INSERT);
-    stack_push(conf->stack_redo, current_state);
+    // struct State *popped_state, *current_state;
 
-    stack_pop(conf->stack_undo, (void**)&popped_state);
-    conf_to_state_update(conf, popped_state);
+    // current_state = malloc(sizeof(struct State));
+    // state_create(conf, current_state, STATE_INSERT);
+    // stack_push(conf->stack_redo, current_state);
+
+    // stack_pop(conf->stack_undo, (void**)&popped_state);
+    // conf_to_state_update(conf, popped_state);
 
     return EXIT_SUCCESS;
 }
 int editor_redo(struct Config* conf) {
-    if (stack_size(conf->stack_redo) == 0) return EXIT_FAILURE;
+    // TODO
 
-    struct State *popped_state, *current_state;
+    // if (stack_size(conf->stack_redo) == 0) return EXIT_FAILURE;
 
-    current_state = malloc(sizeof(struct State));
-    state_create(conf, current_state, STATE_INSERT);
-    stack_push(conf->stack_undo, current_state);
+    // struct State *popped_state, *current_state;
 
-    stack_pop(conf->stack_redo, (void**)&popped_state);
-    conf_to_state_update(conf, popped_state);
+    // current_state = malloc(sizeof(struct State));
+    // state_create(conf, current_state, STATE_INSERT);
+    // stack_push(conf->stack_undo, current_state);
+
+    // stack_pop(conf->stack_redo, (void**)&popped_state);
+    // conf_to_state_update(conf, popped_state);
 
     return EXIT_SUCCESS;
 }

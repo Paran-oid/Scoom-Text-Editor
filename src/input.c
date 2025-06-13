@@ -5,10 +5,15 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "buffer.h"
 #include "config.h"
 #include "core.h"
 #include "file.h"
+#include "render.h"
 #include "rows.h"
+
+static time_t last_time_modified =
+    time(NULL);  // TODO: add this to config maybe or something like that
 
 int editor_cursor_ctrl(struct Config *conf, enum EditorKey key) {
     if (conf->cy < 0 || conf->cy >= conf->numrows) return EXIT_FAILURE;
@@ -225,18 +230,21 @@ int editor_read_key(void) {
     return EXIT_SUCCESS;
 }
 
+/*
+        Side Note:
+        We use int c instead of char c since we have mapped
+        some keys to values bigger than the max 255 like for ARROWS
+*/
 int editor_process_key_press(struct Config *conf) {
-    /*
-                Side Note:
-                        We use int c instead of char c since we have mapped
-    some keys to values bigger than the max 255 like for ARROWS
+    static int quit_times = QUIT_TIMES;
 
-    */
+    static struct ABuf *buf_prev;
+    if (!buf_prev) {
+        buf_prev = malloc(sizeof(struct ABuf));
+        if (!buf_prev) return EXIT_FAILURE;
+    }
 
     struct State *s;
-    static int quit_times = QUIT_TIMES;
-    // static time_t last_change = 0;
-
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     int c = editor_read_key();
@@ -244,7 +252,7 @@ int editor_process_key_press(struct Config *conf) {
     int times = conf->screen_rows;  // this will be needed in case of page
                                     // up or down basically
 
-    // last_change = time(NULL);  // TODO
+    time_t time_elapsed = time(NULL);  // TODO
 
     switch (c) {
         case '\r':
@@ -351,10 +359,20 @@ int editor_process_key_press(struct Config *conf) {
             editor_redo(conf);
             break;
         default:
-            s = malloc(sizeof(struct State));
-            state_create(conf, s, STATE_INSERT);
+            if (time_elapsed - last_time_modified > 10) {
+                s = malloc(sizeof(struct State));
+                state_create(conf, s, buf_prev->buf, buf_prev->len,
+                             STATE_INSERT);
 
-            stack_push(conf->stack_undo, s);
+                stack_push(conf->stack_undo, s);
+
+                ab_free(buf_prev);
+                last_time_modified = time_elapsed;  // TODO
+            } else {
+                ab_append(buf_prev, (const char *)&c, 1);
+                // append to buff and just write it
+            }
+
             editor_insert_char(conf, c);
             break;
     }
