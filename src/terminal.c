@@ -17,8 +17,8 @@
 
 // TCSAFLUSH: flushes before leaving the program
 
-void term_create(struct Config* conf) {
-    if (tcgetattr(STDIN_FILENO, &conf->termios) == -1) {
+void term_create(struct EditorConfig* conf) {
+    if (tcgetattr(STDIN_FILENO, &conf->orig_termios) == -1) {
         die("tcgetattr");
     }
 
@@ -27,34 +27,34 @@ void term_create(struct Config* conf) {
        I decided to create a temp void* pointer in which I will pass the conf so
        that the terminal can be reset. Risky but possible
     */
-    temp = malloc(sizeof(struct Config));
-    memcpy(temp, conf, sizeof(struct Config));
+    temp = malloc(sizeof(struct EditorConfig));
+    memcpy(temp, conf, sizeof(struct EditorConfig));
     atexit(term_exit);
 
-    conf->termios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-    conf->termios.c_oflag &= ~(OPOST);
-    conf->termios.c_iflag &= ~(IXON | ICRNL);
-    conf->termios.c_cflag |= (CS8);
-    conf->termios.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
+    conf->orig_termios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    conf->orig_termios.c_oflag &= ~(OPOST);
+    conf->orig_termios.c_iflag &= ~(IXON | ICRNL);
+    conf->orig_termios.c_cflag |= (CS8);
+    conf->orig_termios.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
 
     // return 0 if nothing entered
-    conf->termios.c_cc[VMIN] = 0;
+    conf->orig_termios.c_cc[VMIN] = 0;
     // return after 100 ms into output buffer
-    conf->termios.c_cc[VTIME] = 1;
+    conf->orig_termios.c_cc[VTIME] = 1;
 
-    if (tcsetattr(STDOUT_FILENO, 0, &conf->termios) == -1) {
+    if (tcsetattr(STDOUT_FILENO, 0, &conf->orig_termios) == -1) {
         die("tcsetattr");
     }
 }
 
 void term_exit(void) {
     if (!temp || tcsetattr(STDIN_FILENO, TCSAFLUSH,
-                           &((struct Config*)temp)->termios) == -1) {
+                           &((struct EditorConfig*)temp)->orig_termios) == -1) {
         die("tcsetattr");
     }
 }
 
-int term_get_window_size(struct Config* conf, int* rows, int* cols) {
+int term_get_window_size(struct EditorConfig* conf, int* rows, int* cols) {
     struct winsize ws;
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
         // idea:

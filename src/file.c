@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "buffer.h"
 #include "config.h"
 #include "core.h"
 #include "highlight.h"
@@ -14,28 +15,21 @@
 #include "rows.h"
 #include "terminal.h"
 
-int state_create(struct Config* conf, struct State* state, const char* buf,
-                 size_t size, enum StateType type) {
-    state->type = type;
-    state->cx = conf->cx;
-    state->cy = conf->cy;
+int snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
+    snapshot->cx = conf->cx;
+    snapshot->cy = conf->cy;
 
-    struct Row* row = &conf->rows[conf->cy];
-
-    state->text = malloc(size + 1);
-    memcpy(state->text, buf, size);
-    state->text[row->size] = '\0';
-    state->text_size = row->size;
+    editor_rows_to_string(conf, &snapshot->text, &snapshot->len);
 
     return EXIT_SUCCESS;
 }
 
-int state_destroy(struct State* state) {
-    free(state->text);
+int snapshot_destroy(struct Snapshot* snapshot) {
+    free(snapshot->text);
     return EXIT_SUCCESS;
 }
 
-int editor_open(struct Config* conf, const char* path) {
+int editor_open(struct EditorConfig* conf, const char* path) {
     free(conf->filename);
     conf->filename = strdup(path);
 
@@ -56,14 +50,14 @@ int editor_open(struct Config* conf, const char* path) {
         editor_insert_row(conf, conf->numrows, line, line_len);
     }
 
-    conf->dirty = 0;
+    conf->is_dirty = 0;
     free(line);
     fclose(fp);
 
     return EXIT_SUCCESS;
 }
 
-int editor_run(struct Config* conf) {
+int editor_run(struct EditorConfig* conf) {
     config_create(conf);
     term_create(conf);
 
@@ -85,12 +79,12 @@ int editor_run(struct Config* conf) {
     }
 }
 
-int editor_destroy(struct Config* conf) {
+int editor_destroy(struct EditorConfig* conf) {
     config_destroy(conf);
     return EXIT_SUCCESS;
 }
 
-int editor_save(struct Config* conf) {
+int editor_save(struct EditorConfig* conf) {
     if (!conf->filename) {
         conf->filename = editor_prompt(conf, "Save as: %s", NULL);
         if (!conf->filename) {
@@ -115,47 +109,48 @@ int editor_save(struct Config* conf) {
 
     editor_set_status_message(conf, "%d bytes written to disk", file_data_size);
 
-    conf->dirty = 0;
+    conf->is_dirty = 0;
     close(fd);
     free(file_data);
 
     return EXIT_SUCCESS;
 }
 
-int editor_undo(struct Config* conf) {
-    // TODO
+int editor_undo(struct EditorConfig* conf) {
+    if (stack_size(conf->stack_undo) == 0) return EXIT_FAILURE;
 
-    // if (stack_size(conf->stack_undo) == 0) return EXIT_FAILURE;
+    struct Snapshot *popped_snapshot, *current_snapshot;
+    struct Row* row;
 
-    // struct State *popped_state, *current_state;
+    row = &conf->rows[conf->cy];
+    current_snapshot = malloc(sizeof(struct Snapshot));
+    snapshot_create(conf, current_snapshot);
+    stack_push(conf->stack_redo, current_snapshot);
 
-    // current_state = malloc(sizeof(struct State));
-    // state_create(conf, current_state, STATE_INSERT);
-    // stack_push(conf->stack_redo, current_state);
-
-    // stack_pop(conf->stack_undo, (void**)&popped_state);
-    // conf_to_state_update(conf, popped_state);
-
-    return EXIT_SUCCESS;
-}
-int editor_redo(struct Config* conf) {
-    // TODO
-
-    // if (stack_size(conf->stack_redo) == 0) return EXIT_FAILURE;
-
-    // struct State *popped_state, *current_state;
-
-    // current_state = malloc(sizeof(struct State));
-    // state_create(conf, current_state, STATE_INSERT);
-    // stack_push(conf->stack_undo, current_state);
-
-    // stack_pop(conf->stack_redo, (void**)&popped_state);
-    // conf_to_state_update(conf, popped_state);
+    stack_pop(conf->stack_undo, (void**)&popped_snapshot);
+    conf_to_snapshot_update(conf, popped_snapshot);
 
     return EXIT_SUCCESS;
 }
 
-int editor_copy(struct Config* conf) {
+int editor_redo(struct EditorConfig* conf) {
+    if (stack_size(conf->stack_redo) == 0) return EXIT_FAILURE;
+
+    struct Snapshot *popped_snapshot, *current_snapshot;
+    struct Row* row;
+
+    row = &conf->rows[conf->cy];
+    current_snapshot = malloc(sizeof(struct Snapshot));
+    snapshot_create(conf, current_snapshot);
+    stack_push(conf->stack_undo, current_snapshot);
+
+    stack_pop(conf->stack_redo, (void**)&popped_snapshot);
+    conf_to_snapshot_update(conf, popped_snapshot);
+
+    return EXIT_SUCCESS;
+}
+
+int editor_copy(struct EditorConfig* conf) {
     /*
             Sadly just linux compatible at the moment...
     */
@@ -174,7 +169,7 @@ int editor_copy(struct Config* conf) {
     return EXIT_SUCCESS;
 }
 
-int editor_paste(struct Config* conf) {
+int editor_paste(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
     if (!pipe) return 1;
 
@@ -208,7 +203,7 @@ int editor_paste(struct Config* conf) {
     row->chars = new_chars;
     row->size = row->size + len;
     editor_update_row(conf, row);
-    conf->dirty = 1;
+    conf->is_dirty = 1;
 
     editor_set_status_message(conf, "pasted %d bytes into buffer",
                               row->size + len + 1);
@@ -219,7 +214,7 @@ int editor_paste(struct Config* conf) {
 
     return EXIT_SUCCESS;
 }
-int editor_cut(struct Config* conf) {
+int editor_cut(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard", "w");
     if (!pipe) return 1;
 
@@ -252,7 +247,8 @@ int editor_cut(struct Config* conf) {
     return EXIT_SUCCESS;
 }
 
-static void editor_find_callback(struct Config* conf, char* query, int key) {
+static void editor_find_callback(struct EditorConfig* conf, char* query,
+                                 int key) {
     // direction: 1(forward) / -1(backward)
     // last_match: -1(not found) / 1(found)
 
@@ -270,7 +266,7 @@ static void editor_find_callback(struct Config* conf, char* query, int key) {
     }
 
     if (key == '\r' || key == '\x1b') {
-        // bring back to old state then return
+        // bring back to old snapshot then return
         last_match = -1;
         direction = 1;
         return;
@@ -279,7 +275,7 @@ static void editor_find_callback(struct Config* conf, char* query, int key) {
     } else if (key == ARROW_LEFT || key == ARROW_UP) {
         direction = -1;
     } else {
-        // if none just bring back to old state
+        // if none just bring back to old snapshot
         last_match = -1;
         direction = 1;
     }
@@ -314,7 +310,7 @@ static void editor_find_callback(struct Config* conf, char* query, int key) {
     }
 }
 
-int editor_find(struct Config* conf) {
+int editor_find(struct EditorConfig* conf) {
     int saved_cx = conf->cx, saved_cy = conf->cy, saved_rowoff = conf->rowoff,
         saved_coloff = conf->coloff;
 

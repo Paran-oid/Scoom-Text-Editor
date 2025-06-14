@@ -8,7 +8,7 @@
 #include "terminal.h"
 
 static void app_destroy(void* el) {
-    struct State* s = (struct State*)el;
+    struct Snapshot* s = (struct Snapshot*)el;
     free(s->text);
     free(s);
 }
@@ -17,11 +17,11 @@ static int app_cmp(const void* str1, const void* str2) {
     return strcmp((const char*)str1, (const char*)str2);
 }
 
-int config_create(struct Config* conf) {
+int config_create(struct EditorConfig* conf) {
     conf->filename = NULL;
 
     // status message section
-    conf->sbuf[0] = '\0';
+    conf->status_msg[0] = '\0';
     conf->sbuf_time = 0;
 
     // cursor section
@@ -33,11 +33,12 @@ int config_create(struct Config* conf) {
     conf->rows = NULL;
     conf->rowoff = 0;
     conf->coloff = 0;
-    conf->dirty = 0;
+    conf->is_dirty = 0;
     conf->syntax = NULL;
 
     conf->stack_undo = malloc(sizeof(Stack));
     conf->stack_redo = malloc(sizeof(Stack));
+    conf->last_time_modified = time(NULL);
 
     stack_create(conf->stack_undo, app_cmp, app_destroy);
     stack_create(conf->stack_redo, app_cmp, app_destroy);
@@ -52,26 +53,22 @@ int config_create(struct Config* conf) {
     return EXIT_SUCCESS;
 }
 
-int conf_to_state_update(struct Config* conf, struct State* state) {
-    if (state->cy == conf->numrows) return EXIT_FAILURE;
+int conf_to_snapshot_update(struct EditorConfig* conf,
+                            struct Snapshot* snapshot) {
+    if (snapshot->cy == conf->numrows) return EXIT_FAILURE;
 
-    conf->cx = state->cx;
-    conf->cy = state->cy;
+    conf->cx = snapshot->cx;
+    conf->cy = snapshot->cy;
 
-    struct Row* row = &conf->rows[conf->cy];
-    free(row->chars);
+    // TODO
+    editor_string_to_rows(conf, snapshot->text, conf->rows, conf->numrows);
 
-    row->chars = malloc(state->text_size + 1);
-    memcpy(row->chars, state->text,
-           state->text_size + 1);  // + 1 for null terminator
-    row->size = state->text_size;
-
-    editor_update_row(conf, row);
+    snapshot_destroy(snapshot);
 
     return EXIT_SUCCESS;
 }
 
-int config_destroy(struct Config* conf) {
+int config_destroy(struct EditorConfig* conf) {
     if (conf->filename) free(conf->filename);
 
     for (size_t i = 0; i < (size_t)conf->numrows; i++) {

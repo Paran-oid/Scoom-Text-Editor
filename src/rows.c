@@ -16,7 +16,7 @@ int editor_free_row(struct Row* row) {
     return EXIT_SUCCESS;
 }
 
-int editor_insert_row_char(struct Config* conf, struct Row* row, int at,
+int editor_insert_row_char(struct EditorConfig* conf, struct Row* row, int at,
                            int c) {
     if (at < 0 || (size_t)at > row->size) {
         return EXIT_FAILURE;
@@ -35,18 +35,18 @@ int editor_insert_row_char(struct Config* conf, struct Row* row, int at,
     return EXIT_SUCCESS;
 }
 
-int editor_delete_row_char(struct Config* conf, struct Row* row, int at) {
+int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
     if (at < 0 || (size_t)at > row->size) return EXIT_FAILURE;
 
     memmove(&row->chars[at], &row->chars[at + 1], row->size - at - 1);
     row->size--;
     editor_update_row(conf, row);
-    conf->dirty = 1;
+    conf->is_dirty = 1;
 
     return EXIT_SUCCESS;
 }
 
-int editor_insert_row(struct Config* conf, int at, const char* content,
+int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
                       size_t content_len) {
     if (at < 0 || at > conf->numrows) return EXIT_FAILURE;
     conf->rows = realloc(conf->rows, sizeof(struct Row) * (conf->numrows + 1));
@@ -71,13 +71,13 @@ int editor_insert_row(struct Config* conf, int at, const char* content,
 
     conf->numrows++;
 
-    conf->dirty = 1;
+    conf->is_dirty = 1;
     editor_update_row(conf, &conf->rows[at]);
 
     return EXIT_SUCCESS;
 }
 
-int editor_update_row(struct Config* conf, struct Row* row) {
+int editor_update_row(struct EditorConfig* conf, struct Row* row) {
     free(row->render);
     // we need to check how much memory to allocate for the renderer
     int tabs = 0;
@@ -113,7 +113,7 @@ int editor_update_row(struct Config* conf, struct Row* row) {
     return EXIT_SUCCESS;
 }
 
-int editor_delete_row(struct Config* conf, int at) {
+int editor_delete_row(struct EditorConfig* conf, int at) {
     if (at < 0 || at > conf->numrows) return EXIT_FAILURE;
     editor_free_row(&conf->rows[at]);
     memmove(&conf->rows[at], &conf->rows[at + 1],
@@ -122,18 +122,18 @@ int editor_delete_row(struct Config* conf, int at) {
         conf->rows[j].idx--;
     }
     conf->numrows--;
-    conf->dirty = 1;
+    conf->is_dirty = 1;
     return EXIT_SUCCESS;
 }
 
-int editor_insert_char(struct Config* conf, int c) {
+int editor_insert_char(struct EditorConfig* conf, int c) {
     if (conf->cy == conf->numrows)
         editor_insert_row(conf, conf->numrows, "", 0);
 
     int numline_offset_size =
         editor_row_numline_calculate(&conf->rows[conf->cy]);
 
-    conf->dirty = 1;
+    conf->is_dirty = 1;
     // got to make sure res is correctly calculated because cx could
     // accidentally touch the numbers part
     int res = editor_insert_row_char(conf, &conf->rows[conf->cy],
@@ -142,7 +142,7 @@ int editor_insert_char(struct Config* conf, int c) {
     return res;
 }
 
-int editor_delete_char(struct Config* conf) {
+int editor_delete_char(struct EditorConfig* conf) {
     int numline_offset_size =
         editor_row_numline_calculate(&conf->rows[conf->cy]);
 
@@ -167,7 +167,7 @@ int editor_delete_char(struct Config* conf) {
     return 2;
 }
 
-int editor_rows_to_string(struct Config* conf, char** result,
+int editor_rows_to_string(struct EditorConfig* conf, char** result,
                           size_t* result_size) {
     size_t total_size = 0;
     for (size_t i = 0; i < (size_t)conf->numrows; i++) {
@@ -191,14 +191,49 @@ int editor_rows_to_string(struct Config* conf, char** result,
     return EXIT_SUCCESS;
 }
 
-int editor_row_append_string(struct Config* conf, struct Row* row, char* s,
-                             size_t slen) {
+int editor_string_to_rows(struct EditorConfig* conf, char* buffer,
+                          struct Row** result, size_t* result_size) {
+    // TODO
+    char* str = strdup(buffer);
+    int size = 0, capacity = 10;
+    result = calloc(sizeof(char*), capacity);
+
+    char* token = strtok(str, "\n");
+
+    while (token) {
+        if (size >= capacity) {
+            capacity *= 2;
+            result = realloc(result, sizeof(char*) * capacity);
+        }
+
+        result[size++] = strdup(token);
+        char* p = result[size - 1];
+        while (*p != '\n') p++;
+
+        // TODO: make sure this works
+        *p = '\0';
+
+        token = strtok(NULL, "\n");
+    }
+
+    if (size < capacity) {
+        result = realloc(result, sizeof(char*) * size);
+    }
+
+    free(str);
+    free(*result);
+
+    return EXIT_SUCCESS;
+}
+
+int editor_row_append_string(struct EditorConfig* conf, struct Row* row,
+                             char* s, size_t slen) {
     row->chars = realloc(row->chars, row->size + slen + 1);
     memcpy(&row->chars[row->size], s, slen);
     row->size += slen;
     row->chars[row->size] = '\0';
     editor_update_row(conf, row);
-    conf->dirty = 1;
+    conf->is_dirty = 1;
 
     return EXIT_SUCCESS;
 }

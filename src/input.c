@@ -12,10 +12,7 @@
 #include "render.h"
 #include "rows.h"
 
-static time_t last_time_modified =
-    time(NULL);  // TODO: add this to config maybe or something like that
-
-int editor_cursor_ctrl(struct Config *conf, enum EditorKey key) {
+int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
     if (conf->cy < 0 || conf->cy >= conf->numrows) return EXIT_FAILURE;
 
     struct Row *row = &conf->rows[conf->cy];
@@ -79,7 +76,7 @@ int editor_cursor_ctrl(struct Config *conf, enum EditorKey key) {
     return EXIT_SUCCESS;
 }
 
-int editor_cursor_move(struct Config *conf, int key) {
+int editor_cursor_move(struct EditorConfig *conf, int key) {
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
 
@@ -235,16 +232,10 @@ int editor_read_key(void) {
         We use int c instead of char c since we have mapped
         some keys to values bigger than the max 255 like for ARROWS
 */
-int editor_process_key_press(struct Config *conf) {
+int editor_process_key_press(struct EditorConfig *conf) {
     static int quit_times = QUIT_TIMES;
 
-    static struct ABuf *buf_prev;
-    if (!buf_prev) {
-        buf_prev = malloc(sizeof(struct ABuf));
-        if (!buf_prev) return EXIT_FAILURE;
-    }
-
-    struct State *s;
+    struct Snapshot *s;
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     int c = editor_read_key();
@@ -252,7 +243,8 @@ int editor_process_key_press(struct Config *conf) {
     int times = conf->screen_rows;  // this will be needed in case of page
                                     // up or down basically
 
-    time_t time_elapsed = time(NULL);  // TODO
+    time_t current_time = time(NULL);
+    double time_elapsed = difftime(current_time, conf->last_time_modified);
 
     switch (c) {
         case '\r':
@@ -320,7 +312,7 @@ int editor_process_key_press(struct Config *conf) {
             break;
 
         case CTRL_KEY('q'):
-            if (quit_times != 0 && conf->dirty) {
+            if (quit_times != 0 && conf->is_dirty) {
                 editor_set_status_message(conf,
                                           "WARNING!!! file has unsaved changes."
                                           "Press CTRL-Q %d time(s) to leave",
@@ -359,21 +351,15 @@ int editor_process_key_press(struct Config *conf) {
             editor_redo(conf);
             break;
         default:
-            if (time_elapsed - last_time_modified > 10) {
-                s = malloc(sizeof(struct State));
-                state_create(conf, s, buf_prev->buf, buf_prev->len,
-                             STATE_INSERT);
-
+            if (time_elapsed > 0.5) {
+                s = malloc(sizeof(struct Snapshot));
+                snapshot_create(conf, s);
                 stack_push(conf->stack_undo, s);
-
-                ab_free(buf_prev);
-                last_time_modified = time_elapsed;  // TODO
-            } else {
-                ab_append(buf_prev, (const char *)&c, 1);
-                // append to buff and just write it
             }
 
             editor_insert_char(conf, c);
+            conf->last_time_modified = current_time;
+
             break;
     }
 
@@ -383,7 +369,7 @@ int editor_process_key_press(struct Config *conf) {
     return EXIT_SUCCESS;
 }
 
-int editor_insert_newline(struct Config *conf) {
+int editor_insert_newline(struct EditorConfig *conf) {
     struct Row *row;
     if (conf->numrows) {
         row = &conf->rows[conf->cy];

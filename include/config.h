@@ -11,40 +11,41 @@
 #define QUIT_TIMES 3
 #define IDENT_SIZE 4
 
-struct State;
+struct Snapshot;
 struct DList;
 
-struct Config {
+struct EditorConfig {
     // termios related
-    struct termios termios;
+    struct termios orig_termios;
 
     // status bar
-    char sbuf[80];  // status buffer
+    char status_msg[80];  // status buffer
     time_t sbuf_time;
 
     // cursor related
-    int cx;
-    int cy;
-    int rx;
+    int cx, cy;  // cursor position in characters
+    int rx;      // rendered x position, accounting for tabs
 
     int screen_rows;
     int screen_cols;
 
     // file handling
     char* filename;
-    struct Row* rows;
+    struct Row* rows;  // array of rows
     struct EditorSyntax* syntax;
     int numrows;
     int rowoff, coloff;
-    unsigned int dirty : 1;
+    unsigned int is_dirty : 1;
 
-    // saves state of application for undo and redos and so forth
+    // saves snapshot of application for undo and redos and so forth
     Stack* stack_undo;
     Stack* stack_redo;
+    time_t last_time_modified;  // last time modified
 };
 
-int config_create(struct Config* conf);
-int conf_to_state_update(struct Config* conf, struct State* state);
-int config_destroy(struct Config* conf);
+int config_create(struct EditorConfig* conf);
+int conf_to_snapshot_update(struct EditorConfig* conf,
+                            struct Snapshot* snapshot);
+int config_destroy(struct EditorConfig* conf);
 
 #endif

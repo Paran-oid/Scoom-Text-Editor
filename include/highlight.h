@@ -2,7 +2,7 @@
 #define HIGHLIGHT_H
 
 struct Row;
-struct Config;
+struct EditorConfig;
 
 enum EditorHighlight {
     HL_NORMAL = 0,
@@ -25,8 +25,8 @@ struct EditorSyntax {
     char* multiline_comment_end;
 };
 
-int editor_syntax_highlight_select(struct Config* conf);
+int editor_syntax_highlight_select(struct EditorConfig* conf);
 int editor_syntax_to_color_row(enum EditorHighlight row);
-int editor_update_syntax(struct Config* conf, struct Row* row);
+int editor_update_syntax(struct EditorConfig* conf, struct Row* row);
 
 #endif

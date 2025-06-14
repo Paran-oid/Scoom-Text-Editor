@@ -7,7 +7,7 @@
 #include "terminal.h"
 
 int main(int argc, char* argv[]) {
-    struct Config* conf = malloc(sizeof(struct Config));
+    struct EditorConfig* conf = malloc(sizeof(struct EditorConfig));
     if (!conf) return EXIT_FAILURE;
 
     if (argc >= 2) {

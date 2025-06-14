@@ -5,36 +5,31 @@
 
 #include <stddef.h>
 
-struct Config;
+struct EditorConfig;
 struct ABuf;
 
-enum StateType { STATE_DELETE, STATE_INSERT };
-
-struct State {
+struct Snapshot {
     char* text;
-    size_t text_size;
-    enum StateType type;
+    size_t len;
 
-    int cx;
-    int cy;
+    int cx, cy;
 };
 
-int state_create(struct Config* conf, struct State* state, const char* buf,
-                 size_t size, enum StateType type);
-int state_destroy(struct State* state);
+int snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot);
+int snapshot_destroy(struct Snapshot* snapshot);
 
-int editor_open(struct Config* conf, const char* path);
-int editor_run(struct Config* conf);
-int editor_destroy(struct Config* conf);
-int editor_save(struct Config* conf);
+int editor_open(struct EditorConfig* conf, const char* path);
+int editor_run(struct EditorConfig* conf);
+int editor_destroy(struct EditorConfig* conf);
+int editor_save(struct EditorConfig* conf);
 
-int editor_undo(struct Config* conf);
-int editor_redo(struct Config* conf);
+int editor_undo(struct EditorConfig* conf);
+int editor_redo(struct EditorConfig* conf);
 
-int editor_copy(struct Config* conf);
-int editor_paste(struct Config* conf);
-int editor_cut(struct Config* conf);
+int editor_copy(struct EditorConfig* conf);
+int editor_paste(struct EditorConfig* conf);
+int editor_cut(struct EditorConfig* conf);
 
-int editor_find(struct Config* conf);
+int editor_find(struct EditorConfig* conf);
 
 #endif

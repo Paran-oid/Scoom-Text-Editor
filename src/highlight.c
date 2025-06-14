@@ -56,7 +56,7 @@ int editor_syntax_to_color_row(enum EditorHighlight hl) {
     }
 }
 
-int editor_syntax_highlight_select(struct Config* conf) {
+int editor_syntax_highlight_select(struct EditorConfig* conf) {
     /*
             !strcmp(a, b) is equivalent to strcmp(a, b) == 0
     */
@@ -87,7 +87,7 @@ int editor_syntax_highlight_select(struct Config* conf) {
     return EXIT_FAILURE;
 }
 
-int editor_update_syntax(struct Config* conf, struct Row* row) {
+int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
     row->hl = realloc(row->hl, row->rsize);
     memset(row->hl, HL_NORMAL, row->rsize);
 

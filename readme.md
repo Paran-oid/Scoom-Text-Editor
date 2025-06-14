@@ -4,7 +4,7 @@
 
 - Fix editor scroll function problem when text gets out of screen
 - Enable strict debugging stuff again
-- Implement redo and undo functionalities (using stacks for both redo, undo and storing older states somehow)
+- Implement redo and undo functionalities (using stacks for both redo, undo and storing older snapshots somehow)
 
 ## section 2
 

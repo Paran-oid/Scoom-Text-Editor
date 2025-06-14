@@ -18,8 +18,8 @@
 #include "terminal.h"
 /***  Appending buffer section ***/
 
-char *editor_prompt(struct Config *conf, const char *prompt,
-                    void (*callback)(struct Config *, char *, int)) {
+char *editor_prompt(struct EditorConfig *conf, const char *prompt,
+                    void (*callback)(struct EditorConfig *, char *, int)) {
     size_t bufsize = 128;
     size_t buflen = 0;
     char *buf = malloc(bufsize);
@@ -63,10 +63,10 @@ char *editor_prompt(struct Config *conf, const char *prompt,
     return NULL;
 }
 
-int editor_set_status_message(struct Config *conf, const char *fmt, ...) {
+int editor_set_status_message(struct EditorConfig *conf, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    vsnprintf(conf->sbuf, sizeof(conf->sbuf), fmt, ap);
+    vsnprintf(conf->status_msg, sizeof(conf->status_msg), fmt, ap);
     va_end(ap);
     conf->sbuf_time = time(NULL);
 
@@ -75,7 +75,7 @@ int editor_set_status_message(struct Config *conf, const char *fmt, ...) {
 
 /***  Screen display and rendering section ***/
 
-int editor_refresh_screen(struct Config *conf) {
+int editor_refresh_screen(struct EditorConfig *conf) {
     editor_scroll(conf);
 
     struct ABuf ab = ABUF_INIT;
@@ -109,20 +109,20 @@ int editor_refresh_screen(struct Config *conf) {
     return EXIT_SUCCESS;
 }
 
-int editor_draw_messagebar(struct Config *conf, struct ABuf *ab) {
+int editor_draw_messagebar(struct EditorConfig *conf, struct ABuf *ab) {
     ab_append(ab, "\x1b[K", 3);  // we clear current line in terminal
-    size_t message_len = strlen(conf->sbuf);
+    size_t message_len = strlen(conf->status_msg);
     if (message_len > (size_t)conf->screen_cols)
         message_len = conf->screen_cols;
     // if message has length and time elapsed since
     // last time message inserted is bigger than 5
     if (message_len && time(NULL) - conf->sbuf_time < 5)
-        ab_append(ab, conf->sbuf, message_len);
+        ab_append(ab, conf->status_msg, message_len);
 
     return EXIT_SUCCESS;
 }
 
-int editor_draw_statusbar(struct Config *conf, struct ABuf *ab) {
+int editor_draw_statusbar(struct EditorConfig *conf, struct ABuf *ab) {
     /*
     you could specify all of these attributes using the command <esc>[1;4;5;7m.
     An argument of 0 clears all attributes, and is the default argument, so we
@@ -133,9 +133,10 @@ int editor_draw_statusbar(struct Config *conf, struct ABuf *ab) {
 
     // text to write inside statusbar
     char status[80], rstatus[80];
-    int status_len = snprintf(status, sizeof(status), "%.20s - %d lines %s",
-                              conf->filename ? conf->filename : "[No Name]",
-                              conf->numrows, conf->dirty ? "(modified)" : "");
+    int status_len =
+        snprintf(status, sizeof(status), "%.20s - %d lines %s",
+                 conf->filename ? conf->filename : "[No Name]", conf->numrows,
+                 conf->is_dirty ? "(modified)" : "");
 
     int rstatus_len = snprintf(rstatus, sizeof(rstatus), "%s | %d/%d",
                                conf->syntax ? conf->syntax->filetype : "no ft",
@@ -160,7 +161,7 @@ int editor_draw_statusbar(struct Config *conf, struct ABuf *ab) {
     return EXIT_SUCCESS;
 }
 
-int editor_draw_rows(struct Config *conf, struct ABuf *ab) {
+int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
     for (size_t y = 0; y < (size_t)conf->screen_rows; y++) {
         int filerow = y + conf->rowoff;
         if (filerow >= conf->numrows) {
@@ -259,7 +260,7 @@ int editor_draw_rows(struct Config *conf, struct ABuf *ab) {
     return EXIT_SUCCESS;
 }
 
-int editor_scroll(struct Config *conf) {
+int editor_scroll(struct EditorConfig *conf) {
     struct Row *row;
     row = &conf->rows[conf->cy];
 

@@ -1,7 +1,7 @@
 #ifndef INPUT_H
 #define INPUT_H
 
-struct Config;
+struct EditorConfig;
 
 enum EditorKey {
     BACKSPACE = 127,
@@ -24,16 +24,17 @@ enum EditorKey {
     END_KEY
 };
 
-int editor_set_status_message(struct Config *conf, const char *message, ...);
-char *editor_prompt(struct Config *conf, const char *prompt,
-                    void (*callback)(struct Config *, char *, int));
+int editor_set_status_message(struct EditorConfig *conf, const char *message,
+                              ...);
+char *editor_prompt(struct EditorConfig *conf, const char *prompt,
+                    void (*callback)(struct EditorConfig *, char *, int));
 
-int editor_cursor_cursor(struct Config *conf, enum EditorKey key);
-int editor_cursor_move(struct Config *conf, int key);
+int editor_cursor_cursor(struct EditorConfig *conf, enum EditorKey key);
+int editor_cursor_move(struct EditorConfig *conf, int key);
 
 int editor_read_key(void);
-int editor_process_key_press(struct Config *conf);
+int editor_process_key_press(struct EditorConfig *conf);
 
-int editor_insert_newline(struct Config *conf);
+int editor_insert_newline(struct EditorConfig *conf);
 
 #endif

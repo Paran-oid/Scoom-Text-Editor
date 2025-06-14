@@ -16,5 +16,6 @@ int ab_append(struct ABuf *ab, const char *s, size_t slen) {
 
 int ab_free(struct ABuf *ab) {
     free(ab->buf);
+    ab->buf = NULL;
     return EXIT_SUCCESS;
 }
