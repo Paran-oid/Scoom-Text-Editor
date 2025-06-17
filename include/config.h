@@ -43,9 +43,10 @@ struct EditorConfig {
     time_t last_time_modified;  // last time modified
 };
 
-int config_create(struct EditorConfig* conf);
+int conf_create(struct EditorConfig* conf);
 int conf_to_snapshot_update(struct EditorConfig* conf,
                             struct Snapshot* snapshot);
-int config_destroy(struct EditorConfig* conf);
+int conf_destroy_rows(struct EditorConfig* conf);
+int conf_destroy(struct EditorConfig* conf);
 
 #endif

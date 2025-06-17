@@ -191,37 +191,44 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
     return EXIT_SUCCESS;
 }
 
-int editor_string_to_rows(struct EditorConfig* conf, char* buffer,
-                          struct Row** result, size_t* result_size) {
-    // TODO
+// returns number of rows
+int editor_string_to_rows(struct EditorConfig* conf, char* buffer) {
+    // reset all rows in conf
+    conf_destroy_rows(conf);
+
     char* str = strdup(buffer);
-    int size = 0, capacity = 10;
-    result = calloc(sizeof(char*), capacity);
+    size_t index = 0, capacity = 10;
+    conf->rows = calloc(sizeof(struct Row), capacity);
 
     char* token = strtok(str, "\n");
 
     while (token) {
-        if (size >= capacity) {
+        if (index >= capacity) {
             capacity *= 2;
-            result = realloc(result, sizeof(char*) * capacity);
+            conf->rows = realloc(conf->rows, sizeof(struct Row) * capacity);
         }
 
-        result[size++] = strdup(token);
-        char* p = result[size - 1];
-        while (*p != '\n') p++;
+        conf->rows[index].chars = strdup(token);
+        conf->rows[index].idx = index;
+        conf->rows[index].size = strlen(conf->rows[index].chars);
+        conf->rows[index].render = NULL;
+        conf->rows[index].rsize = 0;
+        conf->rows[index].hl = NULL;
+        conf->rows[index].hl_open_comment = false;
 
-        // TODO: make sure this works
-        *p = '\0';
+        conf->is_dirty = 1;
+        editor_update_row(conf, &conf->rows[index]);
 
         token = strtok(NULL, "\n");
+        index++;
     }
 
-    if (size < capacity) {
-        result = realloc(result, sizeof(char*) * size);
+    if (index < capacity) {
+        conf->rows = realloc(conf->rows, sizeof(struct Row) * index);
     }
 
     free(str);
-    free(*result);
+    conf->numrows = index - 1;
 
     return EXIT_SUCCESS;
 }

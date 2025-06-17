@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
 
     if (argc >= 2) {
         if (editor_open(conf, argv[1]) != 0) {
-            config_destroy(conf);
+            conf_destroy(conf);
             return EXIT_FAILURE;
         }
     }
@@ -21,6 +21,7 @@ int main(int argc, char* argv[]) {
 
     editor_destroy(conf);
     free(temp);
+    free(conf);
 
     return EXIT_SUCCESS;
 }

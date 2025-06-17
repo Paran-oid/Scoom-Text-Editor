@@ -33,8 +33,7 @@ int editor_delete_char(struct EditorConfig* conf);
 
 int editor_rows_to_string(struct EditorConfig* conf, char** result,
                           size_t* result_size);
-int editor_string_to_rows(struct EditorConfig* conf, char* buffer,
-                          struct Row*** rows, size_t* result_size);
+int editor_string_to_rows(struct EditorConfig* conf, char* buffer);
 
 int editor_row_append_string(struct EditorConfig* conf, struct Row* row,
                              char* s, size_t slen);

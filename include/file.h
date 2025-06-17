@@ -12,6 +12,7 @@ struct Snapshot {
     char* text;
     size_t len;
 
+    int numrows;
     int cx, cy;
 };
 

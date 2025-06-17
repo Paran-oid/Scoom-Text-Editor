@@ -6,7 +6,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "buffer.h"
 #include "config.h"
 #include "core.h"
 #include "highlight.h"
@@ -18,6 +17,7 @@
 int snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
     snapshot->cx = conf->cx;
     snapshot->cy = conf->cy;
+    snapshot->numrows = conf->numrows;
 
     editor_rows_to_string(conf, &snapshot->text, &snapshot->len);
 
@@ -58,13 +58,13 @@ int editor_open(struct EditorConfig* conf, const char* path) {
 }
 
 int editor_run(struct EditorConfig* conf) {
-    config_create(conf);
+    conf_create(conf);
     term_create(conf);
 
 #ifdef DEBUG
 
     if (editor_open(conf, "test.c") != 0) {
-        config_destroy(conf);
+        conf_destroy(conf);
         return EXIT_FAILURE;
     }
 
@@ -80,7 +80,7 @@ int editor_run(struct EditorConfig* conf) {
 }
 
 int editor_destroy(struct EditorConfig* conf) {
-    config_destroy(conf);
+    conf_destroy(conf);
     return EXIT_SUCCESS;
 }
 

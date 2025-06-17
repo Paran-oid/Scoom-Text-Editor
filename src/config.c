@@ -17,7 +17,7 @@ static int app_cmp(const void* str1, const void* str2) {
     return strcmp((const char*)str1, (const char*)str2);
 }
 
-int config_create(struct EditorConfig* conf) {
+int conf_create(struct EditorConfig* conf) {
     conf->filename = NULL;
 
     // status message section
@@ -60,27 +60,58 @@ int conf_to_snapshot_update(struct EditorConfig* conf,
     conf->cx = snapshot->cx;
     conf->cy = snapshot->cy;
 
-    // TODO
-    editor_string_to_rows(conf, snapshot->text, conf->rows, conf->numrows);
+    editor_string_to_rows(conf, snapshot->text);
+    conf->numrows = snapshot->numrows;
 
+    // after consuming it just delete it to save some memory
     snapshot_destroy(snapshot);
 
     return EXIT_SUCCESS;
 }
 
-int config_destroy(struct EditorConfig* conf) {
-    if (conf->filename) free(conf->filename);
-
+int conf_destroy_rows(struct EditorConfig* conf) {
     for (size_t i = 0; i < (size_t)conf->numrows; i++) {
         free(conf->rows[i].chars);
         free(conf->rows[i].render);
+        free(conf->rows[i].hl);
     }
+    free(conf->rows);
+
+    conf->rows = NULL;
+
+    return 0;
+}
+
+int conf_destroy(struct EditorConfig* conf) {
+    if (conf->filename) free(conf->filename);
+
+    conf_destroy_rows(conf);
 
     stack_destroy(conf->stack_redo);
     stack_destroy(conf->stack_undo);
 
-    free(conf->rows);
-    free(conf);
+    // Reset all fields to safe values
+    conf->cx = 0;
+    conf->cy = 0;
+    conf->rx = 0;
+
+    conf->screen_rows = 0;
+    conf->screen_cols = 0;
+
+    conf->rows = NULL;
+    conf->syntax = NULL;
+    conf->numrows = 0;
+
+    conf->rowoff = 0;
+    conf->coloff = 0;
+    conf->is_dirty = 0;
+
+    conf->status_msg[0] = '\0';
+    conf->sbuf_time = 0;
+    conf->last_time_modified = 0;
+
+    // Optional: zero out termios struct
+    memset(&conf->orig_termios, 0, sizeof(conf->orig_termios));
 
     return EXIT_SUCCESS;
 }
