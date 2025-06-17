@@ -43,6 +43,14 @@ struct EditorConfig {
     time_t last_time_modified;  // last time modified
 };
 
+enum EditorStatus {
+    SUCCESS,
+    ERROR,
+    INVALID_ARG,
+    OUT_OF_MEMORY,
+	EXIT_CODE
+};
+
 int conf_create(struct EditorConfig* conf);
 int conf_to_snapshot_update(struct EditorConfig* conf,
                             struct Snapshot* snapshot);

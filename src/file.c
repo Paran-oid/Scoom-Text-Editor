@@ -75,8 +75,14 @@ int editor_run(struct EditorConfig* conf) {
 
     while (1) {
         editor_refresh_screen(conf);
-        editor_process_key_press(conf);
+        if (editor_process_key_press(conf) == EXIT_CODE) {
+            break;
+        }
     }
+
+    if (write(STDOUT_FILENO, "\x1b[2J", 4) == 0) return EXIT_FAILURE;
+    if (write(STDOUT_FILENO, "\x1b[H", 3) == 0) return EXIT_FAILURE;
+    return SUCCESS;
 }
 
 int editor_destroy(struct EditorConfig* conf) {
@@ -120,15 +126,14 @@ int editor_undo(struct EditorConfig* conf) {
     if (stack_size(conf->stack_undo) == 0) return EXIT_FAILURE;
 
     struct Snapshot *popped_snapshot, *current_snapshot;
-    struct Row* row;
 
-    row = &conf->rows[conf->cy];
     current_snapshot = malloc(sizeof(struct Snapshot));
     snapshot_create(conf, current_snapshot);
     stack_push(conf->stack_redo, current_snapshot);
 
     stack_pop(conf->stack_undo, (void**)&popped_snapshot);
     conf_to_snapshot_update(conf, popped_snapshot);
+    free(popped_snapshot);
 
     return EXIT_SUCCESS;
 }
@@ -137,9 +142,7 @@ int editor_redo(struct EditorConfig* conf) {
     if (stack_size(conf->stack_redo) == 0) return EXIT_FAILURE;
 
     struct Snapshot *popped_snapshot, *current_snapshot;
-    struct Row* row;
 
-    row = &conf->rows[conf->cy];
     current_snapshot = malloc(sizeof(struct Snapshot));
     snapshot_create(conf, current_snapshot);
     stack_push(conf->stack_undo, current_snapshot);

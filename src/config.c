@@ -8,9 +8,8 @@
 #include "terminal.h"
 
 static void app_destroy(void* el) {
-    struct Snapshot* s = (struct Snapshot*)el;
-    free(s->text);
-    free(s);
+    snapshot_destroy((struct Snapshot*)el);
+    free(el);
 }
 
 static int app_cmp(const void* str1, const void* str2) {
@@ -110,7 +109,6 @@ int conf_destroy(struct EditorConfig* conf) {
     conf->sbuf_time = 0;
     conf->last_time_modified = 0;
 
-    // Optional: zero out termios struct
     memset(&conf->orig_termios, 0, sizeof(conf->orig_termios));
 
     return EXIT_SUCCESS;

@@ -5,7 +5,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "buffer.h"
 #include "config.h"
 #include "core.h"
 #include "file.h"
@@ -118,7 +117,7 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
                 conf->cy--;
                 row = &conf->rows[conf->cy];
                 numline_offset_size = editor_row_numline_calculate(row);
-                if (desired_cx_logical > row->size)
+                if ((size_t)desired_cx_logical > row->size)
                     desired_cx_logical = row->size;
                 conf->cx = numline_offset_size + desired_cx_logical;
             }
@@ -128,7 +127,7 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
                 conf->cy++;
                 row = &conf->rows[conf->cy];
                 numline_offset_size = editor_row_numline_calculate(row);
-                if (desired_cx_logical > row->size)
+                if ((size_t)desired_cx_logical > row->size)
                     desired_cx_logical = row->size;
                 conf->cx = numline_offset_size + desired_cx_logical;
             }
@@ -248,6 +247,10 @@ int editor_process_key_press(struct EditorConfig *conf) {
 
     switch (c) {
         case '\r':
+            s = malloc(sizeof(struct Snapshot));
+            snapshot_create(conf, s);
+            stack_push(conf->stack_undo, s);
+
             editor_insert_newline(conf);
             break;
 
@@ -308,7 +311,16 @@ int editor_process_key_press(struct EditorConfig *conf) {
             if (c == DEL_KEY) {
                 editor_cursor_move(conf, ARROW_RIGHT);
             }
+
+            if (time_elapsed > 0.5) {
+                s = malloc(sizeof(struct Snapshot));
+                if (!s) return EXIT_FAILURE;
+                snapshot_create(conf, s);
+                stack_push(conf->stack_undo, s);
+            }
+
             editor_delete_char(conf);
+            conf->last_time_modified = current_time;
             break;
 
         case CTRL_KEY('q'):
@@ -320,9 +332,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
                 quit_times--;
                 return EXIT_SUCCESS;
             }
-            if (write(STDOUT_FILENO, "\x1b[2J", 4) == 0) return EXIT_FAILURE;
-            if (write(STDOUT_FILENO, "\x1b[H", 3) == 0) return EXIT_FAILURE;
-            exit(1);
+            return EXIT_CODE;
             break;
         case CTRL_KEY('l'):
         case '\x1b':
@@ -336,9 +346,21 @@ int editor_process_key_press(struct EditorConfig *conf) {
             editor_copy(conf);
             break;
         case CTRL_KEY('v'):
+            s = malloc(sizeof(struct Snapshot));
+            if (!s) return EXIT_FAILURE;
+            snapshot_create(conf, s);
+            stack_push(conf->stack_undo, s);
+            conf->last_time_modified = current_time;
+
             editor_paste(conf);
             break;
         case CTRL_KEY('x'):
+            s = malloc(sizeof(struct Snapshot));
+            if (!s) return EXIT_FAILURE;
+            snapshot_create(conf, s);
+            stack_push(conf->stack_undo, s);
+            conf->last_time_modified = current_time;
+
             editor_cut(conf);
             break;
         case CTRL_KEY('f'):
@@ -353,6 +375,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
         default:
             if (time_elapsed > 0.5) {
                 s = malloc(sizeof(struct Snapshot));
+                if (!s) return EXIT_FAILURE;
                 snapshot_create(conf, s);
                 stack_push(conf->stack_undo, s);
             }

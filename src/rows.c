@@ -173,8 +173,8 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
     for (size_t i = 0; i < (size_t)conf->numrows; i++) {
         total_size += conf->rows[i].size + 1;
     }
-    *result_size = total_size;
-    char* file_data = malloc(total_size);
+    *result_size = total_size + 1;
+    char* file_data = malloc(*result_size);
     if (!file_data) return -1;
 
     char* curr_ptr = file_data;
@@ -186,6 +186,7 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
         curr_ptr++;
     }
 
+    *curr_ptr = '\0';
     *result = file_data;
 
     return EXIT_SUCCESS;
