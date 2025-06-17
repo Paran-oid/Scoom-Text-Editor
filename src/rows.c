@@ -13,17 +13,17 @@ int editor_free_row(struct Row* row) {
     free(row->chars);
     free(row->render);
     free(row->hl);
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_insert_row_char(struct EditorConfig* conf, struct Row* row, int at,
                            int c) {
     if (at < 0 || (size_t)at > row->size) {
-        return EXIT_FAILURE;
+        return CURSOR_OUT_OF_BOUNDS;
     }
     // n stands for new for now
     char* new_chars = realloc(row->chars, row->size + 1);
-    if (!new_chars) return EXIT_FAILURE;
+    if (!new_chars) return OUT_OF_MEMORY;
     row->chars = new_chars;
 
     memmove(row->chars + at + 1, row->chars + at, row->size - at);
@@ -32,23 +32,23 @@ int editor_insert_row_char(struct EditorConfig* conf, struct Row* row, int at,
     row->size++;
     editor_update_row(conf, row);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
-    if (at < 0 || (size_t)at > row->size) return EXIT_FAILURE;
+    if (at < 0 || (size_t)at > row->size) return CURSOR_OUT_OF_BOUNDS;
 
     memmove(&row->chars[at], &row->chars[at + 1], row->size - at - 1);
     row->size--;
     editor_update_row(conf, row);
     conf->is_dirty = 1;
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
                       size_t content_len) {
-    if (at < 0 || at > conf->numrows) return EXIT_FAILURE;
+    if (at < 0 || at > conf->numrows) return CURSOR_OUT_OF_BOUNDS;
     conf->rows = realloc(conf->rows, sizeof(struct Row) * (conf->numrows + 1));
 
     memmove(&conf->rows[at + 1], &conf->rows[at],
@@ -74,7 +74,7 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
     conf->is_dirty = 1;
     editor_update_row(conf, &conf->rows[at]);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_update_row(struct EditorConfig* conf, struct Row* row) {
@@ -110,11 +110,11 @@ int editor_update_row(struct EditorConfig* conf, struct Row* row) {
     row->render[n] = '\0';
 
     editor_update_syntax(conf, row);
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_delete_row(struct EditorConfig* conf, int at) {
-    if (at < 0 || at > conf->numrows) return EXIT_FAILURE;
+    if (at < 0 || at > conf->numrows) return CURSOR_OUT_OF_BOUNDS;
     editor_free_row(&conf->rows[at]);
     memmove(&conf->rows[at], &conf->rows[at + 1],
             sizeof(struct Row) * (conf->numrows - at - 1));
@@ -123,7 +123,7 @@ int editor_delete_row(struct EditorConfig* conf, int at) {
     }
     conf->numrows--;
     conf->is_dirty = 1;
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_insert_char(struct EditorConfig* conf, int c) {
@@ -149,7 +149,7 @@ int editor_delete_char(struct EditorConfig* conf) {
     // make sure we're not at end of file or at beginning of first line
     if (conf->cy == conf->numrows ||
         (conf->cx == numline_offset_size && conf->cy == 0))
-        return EXIT_FAILURE;
+        return CURSOR_OUT_OF_BOUNDS;
 
     if (conf->cx > numline_offset_size) {
         int res = editor_delete_row_char(conf, &conf->rows[conf->cy],
@@ -189,7 +189,7 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
     *curr_ptr = '\0';
     *result = file_data;
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 // returns number of rows
@@ -231,7 +231,7 @@ int editor_string_to_rows(struct EditorConfig* conf, char* buffer) {
     free(str);
     conf->numrows = index - 1;
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_row_append_string(struct EditorConfig* conf, struct Row* row,
@@ -243,7 +243,7 @@ int editor_row_append_string(struct EditorConfig* conf, struct Row* row,
     editor_update_row(conf, row);
     conf->is_dirty = 1;
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_update_cx_rx(struct Row* row, int cx) {

@@ -12,7 +12,7 @@
 #include "rows.h"
 
 int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
-    if (conf->cy < 0 || conf->cy >= conf->numrows) return EXIT_FAILURE;
+    if (conf->cy < 0 || conf->cy >= conf->numrows) return CURSOR_OUT_OF_BOUNDS;
 
     struct Row *row = &conf->rows[conf->cy];
     int numline_size = editor_row_numline_calculate(row);
@@ -21,7 +21,7 @@ int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
             conf->cy++;
             if (conf->cy >= conf->numrows - 1) {
                 conf->cy--;
-                return EXIT_FAILURE;
+                return CURSOR_OUT_OF_BOUNDS;
             }
             conf->cx = numline_size;
             row = &conf->rows[conf->cy];
@@ -48,7 +48,7 @@ int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
             conf->cy--;
             if (conf->cy < 0) {
                 conf->cy = 0;
-                return EXIT_FAILURE;
+                return CURSOR_OUT_OF_BOUNDS;
             }
             row = &conf->rows[conf->cy];
             conf->cx = row->size != 0 ? (int)row->size - 1 : numline_size;
@@ -72,7 +72,7 @@ int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
             }
         }
     }
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_cursor_move(struct EditorConfig *conf, int key) {
@@ -133,14 +133,14 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
             }
             break;
         default:
-            return EXIT_FAILURE;
+            return CURSOR_OUT_OF_BOUNDS;
     }
     row = (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     if (row && conf->cx > (int)row->size + numline_offset_size) {
         conf->cx = row->size;
     }
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_read_key(void) {
@@ -223,7 +223,7 @@ int editor_read_key(void) {
         return c;
     }
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 /*
@@ -314,7 +314,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
 
             if (time_elapsed > 0.5) {
                 s = malloc(sizeof(struct Snapshot));
-                if (!s) return EXIT_FAILURE;
+                if (!s) return SNAPSHOT_FAILED;
                 snapshot_create(conf, s);
                 stack_push(conf->stack_undo, s);
             }
@@ -330,7 +330,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
                                           "Press CTRL-Q %d time(s) to leave",
                                           quit_times);
                 quit_times--;
-                return EXIT_SUCCESS;
+                return SUCCESS;
             }
             return EXIT_CODE;
             break;
@@ -347,7 +347,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
             break;
         case CTRL_KEY('v'):
             s = malloc(sizeof(struct Snapshot));
-            if (!s) return EXIT_FAILURE;
+            if (!s) return SNAPSHOT_FAILED;
             snapshot_create(conf, s);
             stack_push(conf->stack_undo, s);
             conf->last_time_modified = current_time;
@@ -356,7 +356,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
             break;
         case CTRL_KEY('x'):
             s = malloc(sizeof(struct Snapshot));
-            if (!s) return EXIT_FAILURE;
+            if (!s) return SNAPSHOT_FAILED;
             snapshot_create(conf, s);
             stack_push(conf->stack_undo, s);
             conf->last_time_modified = current_time;
@@ -375,7 +375,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
         default:
             if (time_elapsed > 0.5) {
                 s = malloc(sizeof(struct Snapshot));
-                if (!s) return EXIT_FAILURE;
+                if (!s) return SNAPSHOT_FAILED;
                 snapshot_create(conf, s);
                 stack_push(conf->stack_undo, s);
             }
@@ -389,7 +389,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
     // we reset if user entered something else than a CTRL-Q
     quit_times = QUIT_TIMES;
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_insert_newline(struct EditorConfig *conf) {
@@ -399,7 +399,7 @@ int editor_insert_newline(struct EditorConfig *conf) {
     } else {
         editor_insert_row(conf, 0, "", 0);
         row = &conf->rows[0];
-        return EXIT_SUCCESS;
+        return SUCCESS;
     }
     int numline_offset_size = editor_row_numline_calculate(row);
 

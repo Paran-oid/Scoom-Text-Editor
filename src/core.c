@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "config.h"
+
 // MISC
 
 void die(const char* s) {
@@ -17,7 +19,7 @@ bool is_separator(unsigned char c) {
 }
 
 int count_digits(int n) {
-    if (n == 0) return EXIT_FAILURE;
+    if (n == 0) return INVALID_ARG;
 
     int res = 0;
     while (n) {
@@ -31,6 +33,7 @@ int count_digits(int n) {
 
 int swap(void* a, void* b, size_t elsize) {
     void* temp = malloc(elsize);
+    if (!temp) return OUT_OF_MEMORY;
 
     memcpy(temp, a, elsize);
     memcpy(a, b, elsize);
@@ -38,5 +41,5 @@ int swap(void* a, void* b, size_t elsize) {
 
     free(temp);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }

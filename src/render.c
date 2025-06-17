@@ -70,7 +70,7 @@ int editor_set_status_message(struct EditorConfig *conf, const char *fmt, ...) {
     va_end(ap);
     conf->sbuf_time = time(NULL);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 /***  Screen display and rendering section ***/
@@ -102,11 +102,11 @@ int editor_refresh_screen(struct EditorConfig *conf) {
     ab_append(&ab, buf, strlen(buf));
 
     if (write(STDOUT_FILENO, ab.buf, ab.len) == 0) {
-        return EXIT_FAILURE;
+        return FILE_WRITE_FAILED;
     }
 
     ab_free(&ab);
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_draw_messagebar(struct EditorConfig *conf, struct ABuf *ab) {
@@ -119,7 +119,7 @@ int editor_draw_messagebar(struct EditorConfig *conf, struct ABuf *ab) {
     if (message_len && time(NULL) - conf->sbuf_time < 5)
         ab_append(ab, conf->status_msg, message_len);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_draw_statusbar(struct EditorConfig *conf, struct ABuf *ab) {
@@ -158,7 +158,7 @@ int editor_draw_statusbar(struct EditorConfig *conf, struct ABuf *ab) {
     ab_append(ab, "\r\n", 2);
     ab_append(ab, "\x1b[m", 3);  // returns to normal
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
@@ -257,7 +257,7 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
         ab_append(ab, "\r\n", 2);
     }
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_scroll(struct EditorConfig *conf) {
@@ -287,5 +287,5 @@ int editor_scroll(struct EditorConfig *conf) {
     if (conf->cy >= conf->rowoff + conf->screen_rows) {
         conf->rowoff = conf->cy - conf->screen_rows + 1;
     }
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }

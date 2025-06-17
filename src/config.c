@@ -37,6 +37,9 @@ int conf_create(struct EditorConfig* conf) {
 
     conf->stack_undo = malloc(sizeof(Stack));
     conf->stack_redo = malloc(sizeof(Stack));
+
+    if (!conf->stack_undo || !conf->stack_redo) return OUT_OF_MEMORY;
+
     conf->last_time_modified = time(NULL);
 
     stack_create(conf->stack_undo, app_cmp, app_destroy);
@@ -49,13 +52,11 @@ int conf_create(struct EditorConfig* conf) {
 
     conf->screen_rows -= 2;
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int conf_to_snapshot_update(struct EditorConfig* conf,
                             struct Snapshot* snapshot) {
-    if (snapshot->cy == conf->numrows) return EXIT_FAILURE;
-
     conf->cx = snapshot->cx;
     conf->cy = snapshot->cy;
 
@@ -65,7 +66,7 @@ int conf_to_snapshot_update(struct EditorConfig* conf,
     // after consuming it just delete it to save some memory
     snapshot_destroy(snapshot);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int conf_destroy_rows(struct EditorConfig* conf) {
@@ -111,5 +112,5 @@ int conf_destroy(struct EditorConfig* conf) {
 
     memset(&conf->orig_termios, 0, sizeof(conf->orig_termios));
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }

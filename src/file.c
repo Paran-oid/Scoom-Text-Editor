@@ -21,12 +21,12 @@ int snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
 
     editor_rows_to_string(conf, &snapshot->text, &snapshot->len);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int snapshot_destroy(struct Snapshot* snapshot) {
     free(snapshot->text);
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_open(struct EditorConfig* conf, const char* path) {
@@ -54,7 +54,7 @@ int editor_open(struct EditorConfig* conf, const char* path) {
     free(line);
     fclose(fp);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_run(struct EditorConfig* conf) {
@@ -65,7 +65,7 @@ int editor_run(struct EditorConfig* conf) {
 
     if (editor_open(conf, "test.c") != 0) {
         conf_destroy(conf);
-        return EXIT_FAILURE;
+        return FILE_OPEN_FAILED;
     }
 
 #endif
@@ -80,14 +80,14 @@ int editor_run(struct EditorConfig* conf) {
         }
     }
 
-    if (write(STDOUT_FILENO, "\x1b[2J", 4) == 0) return EXIT_FAILURE;
-    if (write(STDOUT_FILENO, "\x1b[H", 3) == 0) return EXIT_FAILURE;
+    if (write(STDOUT_FILENO, "\x1b[2J", 4) == 0) return FILE_WRITE_FAILED;
+    if (write(STDOUT_FILENO, "\x1b[H", 3) == 0) return FILE_WRITE_FAILED;
     return SUCCESS;
 }
 
 int editor_destroy(struct EditorConfig* conf) {
     conf_destroy(conf);
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_save(struct EditorConfig* conf) {
@@ -119,11 +119,11 @@ int editor_save(struct EditorConfig* conf) {
     close(fd);
     free(file_data);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_undo(struct EditorConfig* conf) {
-    if (stack_size(conf->stack_undo) == 0) return EXIT_FAILURE;
+    if (stack_size(conf->stack_undo) == 0) return UNDO_STACK_EMPTY;
 
     struct Snapshot *popped_snapshot, *current_snapshot;
 
@@ -135,11 +135,11 @@ int editor_undo(struct EditorConfig* conf) {
     conf_to_snapshot_update(conf, popped_snapshot);
     free(popped_snapshot);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_redo(struct EditorConfig* conf) {
-    if (stack_size(conf->stack_redo) == 0) return EXIT_FAILURE;
+    if (stack_size(conf->stack_redo) == 0) return REDO_STACK_EMPTY;
 
     struct Snapshot *popped_snapshot, *current_snapshot;
 
@@ -150,7 +150,7 @@ int editor_redo(struct EditorConfig* conf) {
     stack_pop(conf->stack_redo, (void**)&popped_snapshot);
     conf_to_snapshot_update(conf, popped_snapshot);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_copy(struct EditorConfig* conf) {
@@ -169,7 +169,7 @@ int editor_copy(struct EditorConfig* conf) {
 
     editor_set_status_message(conf, "copied %d bytes into buffer", row->size);
     pclose(pipe);
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 int editor_paste(struct EditorConfig* conf) {
@@ -215,7 +215,7 @@ int editor_paste(struct EditorConfig* conf) {
 
     free(content_pasted);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 int editor_cut(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard", "w");
@@ -247,7 +247,7 @@ int editor_cut(struct EditorConfig* conf) {
     }
 
     pclose(pipe);
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 static void editor_find_callback(struct EditorConfig* conf, char* query,
@@ -329,5 +329,5 @@ int editor_find(struct EditorConfig* conf) {
         conf->coloff = saved_coloff;
     }
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }

@@ -8,12 +8,12 @@
 
 int main(int argc, char* argv[]) {
     struct EditorConfig* conf = malloc(sizeof(struct EditorConfig));
-    if (!conf) return EXIT_FAILURE;
+    if (!conf) return OUT_OF_MEMORY;
 
     if (argc >= 2) {
         if (editor_open(conf, argv[1]) != 0) {
             conf_destroy(conf);
-            return EXIT_FAILURE;
+            return INVALID_ARG;
         }
     }
 
@@ -23,5 +23,5 @@ int main(int argc, char* argv[]) {
     free(temp);
     free(conf);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }

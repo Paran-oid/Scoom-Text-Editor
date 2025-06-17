@@ -2,7 +2,6 @@
 
 ## main section
 
-- Start using all the macros I defined.
 - Make it resize itself when terminal window gets resized or something like that (ask chatgpt for edge cases like these after)
 - Add more error handling
 - Document my code.

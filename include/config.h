@@ -44,11 +44,45 @@ struct EditorConfig {
 };
 
 enum EditorStatus {
-    SUCCESS,
+
+    // comments generated with AI for clarity
+
+    // General statuses
+    SUCCESS = 0,
     ERROR,
     INVALID_ARG,
     OUT_OF_MEMORY,
-	EXIT_CODE
+
+    // File-related errors
+    FILE_NOT_FOUND,
+    FILE_OPEN_FAILED,
+    FILE_WRITE_FAILED,
+    FILE_READ_FAILED,
+    FILE_TOO_LARGE,
+    FILE_PERMISSION_DENIED,
+    FILE_ENCODING_UNSUPPORTED,
+
+    // Editor-specific errors
+    SYNTAX_ERROR,
+    CURSOR_OUT_OF_BOUNDS,
+    EMPTY_BUFFER,
+    UNSUPPORTED_OPERATION,
+
+    // Stack or undo/redo issues
+    UNDO_STACK_EMPTY,
+    REDO_STACK_EMPTY,
+    SNAPSHOT_FAILED,
+
+    // Search-related
+    SEARCH_NOT_FOUND,
+    SEARCH_INVALID_REGEX,
+
+    // Configuration/initialization
+    CONFIG_LOAD_FAILED,
+    CONFIG_SAVE_FAILED,
+
+    // Exit codes
+    EXIT_CODE = 100  // used just to leave the program's loop
 };
 
 int conf_create(struct EditorConfig* conf);
