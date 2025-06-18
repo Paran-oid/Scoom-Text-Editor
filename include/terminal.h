@@ -3,7 +3,7 @@
 
 struct EditorConfig;
 
-static struct EditorConfig* g_conf;
+__attribute__((unused)) static struct EditorConfig* g_conf;
 
 void term_create(struct EditorConfig* conf);
 void term_exit(void);

@@ -144,13 +144,12 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
     return SUCCESS;
 }
 
-int editor_read_key(struct EditorConfig *conf) {
+int editor_read_key(void) {
     char c;
     int nread;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
         if (nread == -1) {
             if (errno == EINTR) {
-                write(STDERR_FILENO, "EINTR hit\n", 10);
                 return INTERRUPT_ENCOUNTERED;
             }
             if (errno != EAGAIN) die("read");
@@ -244,19 +243,19 @@ int editor_process_key_press(struct EditorConfig *conf) {
     struct Snapshot *s;
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
-    int c = editor_read_key(conf);
+    int c = editor_read_key();
     int times = conf->screen_rows;  // this will be needed in case of page
                                     // up or down basically
 
     time_t current_time = time(NULL);
     double time_elapsed = difftime(current_time, conf->last_time_modified);
 
+    // TODO: if current char is { make sure to create some kind of indent next
+    // line
     switch (c) {
         case INTERRUPT_ENCOUNTERED:
             conf->resize_needed = 0;
             term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols);
-            editor_set_status_message(conf, "%d, %d", conf->screen_rows,
-                                      conf->screen_cols);
             conf->screen_rows -= 2;  // for prompt and message rows
             break;
         case '\r':
@@ -415,8 +414,6 @@ int editor_insert_newline(struct EditorConfig *conf) {
         return SUCCESS;
     }
     int numline_offset_size = editor_row_numline_calculate(row);
-
-    // TODO: make sure when you start from an empty file there won't be any bug
     int res;
     if (conf->cx == numline_offset_size) {
         res = editor_insert_row(conf, conf->cy, "", 0);
@@ -439,7 +436,9 @@ int editor_insert_newline(struct EditorConfig *conf) {
             numline_offset_size = new_temp;
         }
     }
-    if (res == 0 && numline_offset_size) {
+    if (res == SUCCESS && numline_offset_size) {
+        // TODO: make sure identation actually works when inserting a new line
+        // by updating the cursor's positions
         conf->cx = numline_offset_size, conf->cy++;
     }
     return res;

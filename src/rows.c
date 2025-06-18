@@ -49,6 +49,13 @@ int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
 int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
                       size_t content_len) {
     if (at < 0 || at > conf->numrows) return CURSOR_OUT_OF_BOUNDS;
+
+    int count_spaces = 0;
+    // check for identation
+    if (conf->cy >= 0 && conf->cy < conf->numrows)
+        count_spaces =
+            editor_row_indentation_calculate(&conf->rows[conf->cy - 1]);
+
     conf->rows = realloc(conf->rows, sizeof(struct Row) * (conf->numrows + 1));
 
     memmove(&conf->rows[at + 1], &conf->rows[at],
@@ -60,8 +67,13 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
 
     conf->rows[at].idx = at;
     conf->rows[at].size = content_len;
-    conf->rows[at].chars = calloc(content_len + 1, sizeof(char));
-    memcpy(conf->rows[at].chars, content, content_len);
+    conf->rows[at].chars = calloc(content_len + count_spaces + 1, sizeof(char));
+
+    // copy spaces if any
+    memcpy(conf->rows[at].chars, " ", count_spaces);
+    // copy the content
+    memcpy(conf->rows[at].chars + count_spaces, content, content_len);
+
     conf->rows[at].chars[content_len] = '\0';
 
     conf->rows[at].render = NULL;
@@ -280,4 +292,18 @@ int editor_update_rx_cx(struct Row* row, int rx) {
 // numline has a variable length so we need a respective function for it
 int editor_row_numline_calculate(struct Row* row) {
     return count_digits(row->idx + 1) + 1;
+}
+
+int editor_row_indentation_calculate(struct Row* row) {
+    if (!row) return 0;
+    int count_spaces = 0;
+    // TODO: fix bug here
+    if (row->render) {
+        char* p = row->render;
+        while (*p == ' ') {
+            count_spaces++;
+            p++;
+        }
+    }
+    return count_spaces;
 }

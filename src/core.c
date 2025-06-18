@@ -11,7 +11,7 @@
 
 void die(const char* s) {
     perror(s);
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 bool is_separator(unsigned char c) {

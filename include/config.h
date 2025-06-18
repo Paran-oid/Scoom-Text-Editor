@@ -14,8 +14,6 @@
 struct Snapshot;
 struct DList;
 
-
-
 struct EditorConfig {
     // Pointers (8 bytes each on 64-bit)
     char* filename;

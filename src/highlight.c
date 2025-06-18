@@ -27,7 +27,7 @@ struct EditorSyntax HLDB[] = {{"C", C_HL_EXTENSIONS, C_HL_KEYWORDS,
                                HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS |
                                    HL_HIGHLIGHT_COMMENTS |
                                    HL_HIGHLIGHT_MCOMMENTS,
-                               "//", "/*", "*/"}};
+                               "//", "/*", "*/", '{'}};
 
 #define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 

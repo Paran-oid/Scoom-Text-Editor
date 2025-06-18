@@ -63,7 +63,9 @@ int editor_run(struct EditorConfig* conf) {
     term_create(conf);
 
 #ifdef DEBUG
-
+{
+	
+}
     if (editor_open(conf, "test.c") != SUCCESS) {
         conf_destroy(conf);
         return FILE_OPEN_FAILED;

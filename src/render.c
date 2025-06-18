@@ -28,7 +28,7 @@ char *editor_prompt(struct EditorConfig *conf, const char *prompt,
     while (1) {
         editor_set_status_message(conf, prompt, buf);
         editor_refresh_screen(conf);
-        int c = editor_read_key(conf);
+        int c = editor_read_key();
 
         if (c == '\r') {
             if (buflen != 0) {

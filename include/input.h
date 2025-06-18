@@ -32,7 +32,7 @@ char *editor_prompt(struct EditorConfig *conf, const char *prompt,
 int editor_cursor_cursor(struct EditorConfig *conf, enum EditorKey key);
 int editor_cursor_move(struct EditorConfig *conf, int key);
 
-int editor_read_key(struct EditorConfig *conf);
+int editor_read_key(void);
 int editor_process_key_press(struct EditorConfig *conf);
 
 int editor_insert_newline(struct EditorConfig *conf);

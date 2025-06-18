@@ -23,6 +23,8 @@ struct EditorSyntax {
     char* singleline_comment_start;
     char* multiline_comment_start;
     char* multiline_comment_end;
+
+    char indent;
 };
 
 int editor_syntax_highlight_select(struct EditorConfig* conf);

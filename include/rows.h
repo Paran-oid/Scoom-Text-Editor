@@ -42,5 +42,6 @@ int editor_update_cx_rx(struct Row* row, int cx);
 int editor_update_rx_cx(struct Row* row, int rx);
 
 int editor_row_numline_calculate(struct Row* row);
+int editor_row_indentation_calculate(struct Row* row);
 
 #endif
