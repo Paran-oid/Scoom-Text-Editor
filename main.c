@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
     if (!conf) return OUT_OF_MEMORY;
 
     if (argc >= 2) {
-        if (editor_open(conf, argv[1]) != 0) {
+        if (editor_open(conf, argv[1]) != SUCCESS) {
             conf_destroy(conf);
             return INVALID_ARG;
         }
@@ -20,8 +20,8 @@ int main(int argc, char* argv[]) {
     editor_run(conf);
 
     editor_destroy(conf);
-    free(temp);
     free(conf);
+    g_conf = NULL;
 
     return SUCCESS;
 }

@@ -192,7 +192,6 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
     return SUCCESS;
 }
 
-// returns number of rows
 int editor_string_to_rows(struct EditorConfig* conf, char* buffer) {
     // reset all rows in conf
     conf_destroy_rows(conf);

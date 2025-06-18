@@ -3,12 +3,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "core.h"
 #include "file.h"
 #include "rows.h"
 #include "terminal.h"
 
+// 50
+
 static void app_destroy(void* el) {
-    snapshot_destroy((struct Snapshot*)el);
+    if (snapshot_destroy((struct Snapshot*)el) != SUCCESS) {
+        die("couldn't destroy snapshot");
+    }
     free(el);
 }
 
@@ -34,6 +39,7 @@ int conf_create(struct EditorConfig* conf) {
     conf->coloff = 0;
     conf->is_dirty = 0;
     conf->syntax = NULL;
+    conf->resize_needed = 0;
 
     conf->stack_undo = malloc(sizeof(Stack));
     conf->stack_redo = malloc(sizeof(Stack));
@@ -57,10 +63,15 @@ int conf_create(struct EditorConfig* conf) {
 
 int conf_to_snapshot_update(struct EditorConfig* conf,
                             struct Snapshot* snapshot) {
+    enum EditorStatus retval;
+
     conf->cx = snapshot->cx;
     conf->cy = snapshot->cy;
 
-    editor_string_to_rows(conf, snapshot->text);
+    if ((retval = editor_string_to_rows(conf, snapshot->text)) != SUCCESS) {
+        return retval;
+    }
+
     conf->numrows = snapshot->numrows;
 
     // after consuming it just delete it to save some memory
@@ -79,7 +90,7 @@ int conf_destroy_rows(struct EditorConfig* conf) {
 
     conf->rows = NULL;
 
-    return 0;
+    return SUCCESS;
 }
 
 int conf_destroy(struct EditorConfig* conf) {

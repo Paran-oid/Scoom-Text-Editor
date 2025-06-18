@@ -32,6 +32,7 @@ int snapshot_destroy(struct Snapshot* snapshot) {
 int editor_open(struct EditorConfig* conf, const char* path) {
     free(conf->filename);
     conf->filename = strdup(path);
+    if (!conf->filename) return OUT_OF_MEMORY;
 
     editor_syntax_highlight_select(conf);
 
@@ -63,7 +64,7 @@ int editor_run(struct EditorConfig* conf) {
 
 #ifdef DEBUG
 
-    if (editor_open(conf, "test.c") != 0) {
+    if (editor_open(conf, "test.c") != SUCCESS) {
         conf_destroy(conf);
         return FILE_OPEN_FAILED;
     }
@@ -135,6 +136,8 @@ int editor_undo(struct EditorConfig* conf) {
     conf_to_snapshot_update(conf, popped_snapshot);
     free(popped_snapshot);
 
+    editor_set_status_message(conf, "undo success!");
+
     return SUCCESS;
 }
 
@@ -149,6 +152,8 @@ int editor_redo(struct EditorConfig* conf) {
 
     stack_pop(conf->stack_redo, (void**)&popped_snapshot);
     conf_to_snapshot_update(conf, popped_snapshot);
+
+    editor_set_status_message(conf, "redo success!");
 
     return SUCCESS;
 }

@@ -28,7 +28,7 @@ char *editor_prompt(struct EditorConfig *conf, const char *prompt,
     while (1) {
         editor_set_status_message(conf, prompt, buf);
         editor_refresh_screen(conf);
-        int c = editor_read_key();
+        int c = editor_read_key(conf);
 
         if (c == '\r') {
             if (buflen != 0) {
@@ -260,7 +260,14 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
     return SUCCESS;
 }
 
+/* this function is responsible for both the scrolling and incase of the array
+ getting resized*/
 int editor_scroll(struct EditorConfig *conf) {
+    if (conf->resize_needed) {
+        term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols);
+        conf->resize_needed = 0;
+    }
+
     struct Row *row;
     row = &conf->rows[conf->cy];
 
@@ -270,7 +277,7 @@ int editor_scroll(struct EditorConfig *conf) {
     if (conf->cy < conf->numrows) {
         conf->rx =
             editor_update_cx_rx(&conf->rows[conf->cy], conf->cx - numline_size);
-        conf->rx += numline_size;  // I don't know what I am doing I am sorry 😭
+        conf->rx += numline_size;  // have to account for size of line's number
     }
 
     if (conf->rx < conf->coloff + numline_size) {

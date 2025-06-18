@@ -14,33 +14,36 @@
 struct Snapshot;
 struct DList;
 
+
+
 struct EditorConfig {
-    // termios related
-    struct termios orig_termios;
-
-    // status bar
-    char status_msg[80];  // status buffer
-    time_t sbuf_time;
-
-    // cursor related
-    int cx, cy;  // cursor position in characters
-    int rx;      // rendered x position, accounting for tabs
-
-    int screen_rows;
-    int screen_cols;
-
-    // file handling
+    // Pointers (8 bytes each on 64-bit)
     char* filename;
-    struct Row* rows;  // array of rows
+    struct Row* rows;
     struct EditorSyntax* syntax;
-    int numrows;
-    int rowoff, coloff;
-    unsigned int is_dirty : 1;
-
-    // saves snapshot of application for undo and redos and so forth
     Stack* stack_undo;
     Stack* stack_redo;
-    time_t last_time_modified;  // last time modified
+
+    // time_t (usually 8 bytes)
+    time_t sbuf_time;
+    time_t last_time_modified;
+
+    // Integers (4 bytes each)
+    int cx, cy;  // cursor
+    int rx;      // rendered x (for tabs)
+    int screen_rows, screen_cols;
+    int numrows;
+    int rowoff, coloff;
+
+    // bitfields packed into one 4-byte int
+    unsigned int is_dirty : 1;
+    unsigned int resize_needed : 1;
+
+    // char array (80 bytes)
+    char status_msg[80];
+
+    // Terminal config (termios is usually ~60 bytes, well-aligned)
+    struct termios orig_termios;
 };
 
 enum EditorStatus {
@@ -52,6 +55,7 @@ enum EditorStatus {
     ERROR,
     INVALID_ARG,
     OUT_OF_MEMORY,
+    INTERRUPT_ENCOUNTERED = 666,
 
     // File-related errors
     FILE_NOT_FOUND,

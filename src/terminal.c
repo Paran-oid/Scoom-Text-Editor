@@ -1,5 +1,6 @@
 #include "terminal.h"
 
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +18,13 @@
 
 // TCSAFLUSH: flushes before leaving the program
 
+static void term_size_flag_update(int sig) {
+    (void)sig;
+    if (g_conf) {
+        g_conf->resize_needed = 1;
+    }
+}
+
 void term_create(struct EditorConfig* conf) {
     if (tcgetattr(STDIN_FILENO, &conf->orig_termios) == -1) {
         die("tcgetattr");
@@ -24,11 +32,11 @@ void term_create(struct EditorConfig* conf) {
 
     /*
         Since you can't pass any parameter for a function pointer in atexit,
-       I decided to create a temp void* pointer in which I will pass the conf so
-       that the terminal can be reset. Risky but possible
+       I decided to create a g_conf void* pointer in which I will pass the
+       conf so that the terminal can be reset. Risky but possible
     */
-    temp = malloc(sizeof(struct EditorConfig));
-    memcpy(temp, conf, sizeof(struct EditorConfig));
+    g_conf = malloc(sizeof(struct EditorConfig));
+    memcpy(g_conf, conf, sizeof(struct EditorConfig));
     atexit(term_exit);
 
     conf->orig_termios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
@@ -42,16 +50,29 @@ void term_create(struct EditorConfig* conf) {
     // return after 100 ms into output buffer
     conf->orig_termios.c_cc[VTIME] = 1;
 
+    write(STDOUT_FILENO, "\x1b[?1049h", 9);  // Hide terminal scrollbar
+
+    // signal(interrupt) handling
+    struct sigaction sa;
+    sa.sa_handler = term_size_flag_update;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0; /* <-- no SA_RESTART (By default, read() may restart
+                     automatically after a signal if the system uses the
+                    SA_RESTART flag. You need to disable this behavior.) */
+    sigaction(SIGWINCH, &sa, NULL);
+
     if (tcsetattr(STDOUT_FILENO, 0, &conf->orig_termios) == -1) {
         die("tcsetattr");
     }
 }
 
 void term_exit(void) {
-    if (!temp || tcsetattr(STDIN_FILENO, TCSAFLUSH,
-                           &((struct EditorConfig*)temp)->orig_termios) == -1) {
+    if (!g_conf ||
+        tcsetattr(STDIN_FILENO, TCSAFLUSH,
+                  &((struct EditorConfig*)g_conf)->orig_termios) == -1) {
         die("tcsetattr");
     }
+    write(STDOUT_FILENO, "\x1b[?1049l", 11);  // Show terminal scrollbar
 }
 
 int term_get_window_size(struct EditorConfig* conf, int* rows, int* cols) {
@@ -77,8 +98,8 @@ int term_get_window_size(struct EditorConfig* conf, int* rows, int* cols) {
 int term_get_cursor_position(int* rows, int* cols) {
     size_t i = 0;
     char buf[32];
-    // Command from host (\x1b[6n) – Please report active position (using a CPR
-    // control sequence)
+    // Command from host (\x1b[6n) – Please report active position (using a
+    // CPR control sequence)
     if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
 
     // result example: <esc>[rows;colsR

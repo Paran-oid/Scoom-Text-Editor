@@ -10,6 +10,7 @@
 #include "file.h"
 #include "render.h"
 #include "rows.h"
+#include "terminal.h"
 
 int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
     if (conf->cy < 0 || conf->cy >= conf->numrows) return CURSOR_OUT_OF_BOUNDS;
@@ -143,11 +144,17 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
     return SUCCESS;
 }
 
-int editor_read_key(void) {
+int editor_read_key(struct EditorConfig *conf) {
     char c;
     int nread;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
-        if (nread == -1 && errno != EAGAIN) die("read");
+        if (nread == -1) {
+            if (errno == EINTR) {
+                write(STDERR_FILENO, "EINTR hit\n", 10);
+                return INTERRUPT_ENCOUNTERED;
+            }
+            if (errno != EAGAIN) die("read");
+        }
     }
 
     if (c == '\x1b') {
@@ -223,7 +230,7 @@ int editor_read_key(void) {
         return c;
     }
 
-    return SUCCESS;
+    return FILE_READ_FAILED;
 }
 
 /*
@@ -237,8 +244,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
     struct Snapshot *s;
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
-    int c = editor_read_key();
-
+    int c = editor_read_key(conf);
     int times = conf->screen_rows;  // this will be needed in case of page
                                     // up or down basically
 
@@ -246,6 +252,13 @@ int editor_process_key_press(struct EditorConfig *conf) {
     double time_elapsed = difftime(current_time, conf->last_time_modified);
 
     switch (c) {
+        case INTERRUPT_ENCOUNTERED:
+            conf->resize_needed = 0;
+            term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols);
+            editor_set_status_message(conf, "%d, %d", conf->screen_rows,
+                                      conf->screen_cols);
+            conf->screen_rows -= 2;  // for prompt and message rows
+            break;
         case '\r':
             s = malloc(sizeof(struct Snapshot));
             snapshot_create(conf, s);
