@@ -46,15 +46,11 @@ int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
     return SUCCESS;
 }
 
+//* make this code shorter if possible instead of having to do conf->rows[at] do
+//* row pointer or something
 int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
                       size_t content_len) {
     if (at < 0 || at > conf->numrows) return CURSOR_OUT_OF_BOUNDS;
-
-    int count_spaces = 0;
-    // check for identation
-    if (conf->cy >= 0 && conf->cy < conf->numrows)
-        count_spaces =
-            editor_row_indentation_calculate(&conf->rows[conf->cy - 1]);
 
     conf->rows = realloc(conf->rows, sizeof(struct Row) * (conf->numrows + 1));
 
@@ -67,14 +63,19 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
 
     conf->rows[at].idx = at;
     conf->rows[at].size = content_len;
-    conf->rows[at].chars = calloc(content_len + count_spaces + 1, sizeof(char));
+    conf->rows[at].chars = calloc(content_len + 1, sizeof(char));
 
     // copy spaces if any
-    memcpy(conf->rows[at].chars, " ", count_spaces);
     // copy the content
-    memcpy(conf->rows[at].chars + count_spaces, content, content_len);
+    conf->rows[at].indentation = (conf->cy > 0 && conf->cy < conf->numrows - 1)
+                                     ? conf->rows[at - 1].indentation
+                                     : 0;
 
-    conf->rows[at].chars[content_len] = '\0';
+    memset(conf->rows[at].chars, '\t', conf->rows[at].indentation);
+    memcpy(conf->rows[at].chars + conf->rows[at].indentation, content,
+           content_len);
+
+    conf->rows[at].chars[content_len + conf->rows[at].indentation] = '\0';
 
     conf->rows[at].render = NULL;
     conf->rows[at].rsize = 0;
@@ -95,8 +96,13 @@ int editor_update_row(struct EditorConfig* conf, struct Row* row) {
     int tabs = 0;
     size_t n = 0;
     for (size_t j = 0; j < row->size; j++) {
-        if (row->chars[j] == '\t') tabs++;
+        // TODO: make user able to choose how to indent stuff
+        if (row->chars[j] == '\t') {
+            tabs++;
+        }
     }
+
+    row->indentation = tabs;
 
     /* TAB_SIZE - 1:
         Because the tab is already counted as 1 character in row->size
@@ -292,18 +298,4 @@ int editor_update_rx_cx(struct Row* row, int rx) {
 // numline has a variable length so we need a respective function for it
 int editor_row_numline_calculate(struct Row* row) {
     return count_digits(row->idx + 1) + 1;
-}
-
-int editor_row_indentation_calculate(struct Row* row) {
-    if (!row) return 0;
-    int count_spaces = 0;
-    // TODO: fix bug here
-    if (row->render) {
-        char* p = row->render;
-        while (*p == ' ') {
-            count_spaces++;
-            p++;
-        }
-    }
-    return count_spaces;
 }

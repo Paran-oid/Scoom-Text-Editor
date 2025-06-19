@@ -13,6 +13,7 @@ struct Row {
     unsigned char* hl;  // stands for highlighting
 
     int idx;
+    size_t indentation;
     size_t size;
     size_t rsize;
     bool hl_open_comment;
@@ -42,6 +43,5 @@ int editor_update_cx_rx(struct Row* row, int cx);
 int editor_update_rx_cx(struct Row* row, int rx);
 
 int editor_row_numline_calculate(struct Row* row);
-int editor_row_indentation_calculate(struct Row* row);
 
 #endif

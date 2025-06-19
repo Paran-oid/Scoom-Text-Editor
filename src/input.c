@@ -250,8 +250,6 @@ int editor_process_key_press(struct EditorConfig *conf) {
     time_t current_time = time(NULL);
     double time_elapsed = difftime(current_time, conf->last_time_modified);
 
-    // TODO: if current char is { make sure to create some kind of indent next
-    // line
     switch (c) {
         case INTERRUPT_ENCOUNTERED:
             conf->resize_needed = 0;
@@ -259,6 +257,10 @@ int editor_process_key_press(struct EditorConfig *conf) {
             conf->screen_rows -= 2;  // for prompt and message rows
             break;
         case '\r':
+            // TODO: if current char is { make sure to create some kind of
+            // indent next
+            // line
+
             s = malloc(sizeof(struct Snapshot));
             snapshot_create(conf, s);
             stack_push(conf->stack_undo, s);
@@ -418,12 +420,50 @@ int editor_insert_newline(struct EditorConfig *conf) {
     if (conf->cx == numline_offset_size) {
         res = editor_insert_row(conf, conf->cy, "", 0);
     } else {
-        res = editor_insert_row(conf, conf->cy + 1,
-                                &row->chars[conf->cx - numline_offset_size],
-                                row->size - conf->cx + numline_offset_size);
+        // !we got to account for any form of indentation
+
+        int indent = row->indentation;
+        // we got to check if there is any sort of brackets
+        bool in_string = false;
+        bool to_indent = false;
+
+        // TODO: start working on this part
+        // for (size_t i = 0; i < conf->rx; i++) {
+        //     char c = row->render[i];
+
+        //     if (c == '"' && (i == 0 || row->render[i - 1] != '\\')) {
+        //         in_string = !in_string;
+        //         continue;
+        //     }
+
+        //     if (!in_string) {
+        //         if (c == '{') {
+        //             to_indent = true;
+        //         }
+        //     }
+        // }
+
+        // TODO: fix this mess
+        if (to_indent) indent++;
+        int remainder_len = row->size - conf->cx + numline_offset_size;
+        char *remainder = &row->chars[conf->cx - numline_offset_size];
+
+        char *newline = malloc(remainder_len + indent + 1);
+        if (!newline) return OUT_OF_MEMORY;
+
+        memset(newline, '\t', indent);
+        memcpy(&newline[indent], remainder, remainder_len);
+        newline[remainder_len + indent] = '\0';
+
+        // TODO: make it not bug when entering a new line when pressing enter
+        // inside a sentence
+        res = editor_insert_row(conf, conf->cy + 1, newline,
+                                indent + remainder_len);
+        free(newline);
+        {}
 
         row = &conf->rows[conf->cy];  // realloc could make our pointer invalid
-                                      // so better safe than sorry
+                                      // so we need to point there once again
 
         row->size = conf->cx - numline_offset_size;
         row->chars[row->size] = '\0';
@@ -437,9 +477,8 @@ int editor_insert_newline(struct EditorConfig *conf) {
         }
     }
     if (res == SUCCESS && numline_offset_size) {
-        // TODO: make sure identation actually works when inserting a new line
-        // by updating the cursor's positions
-        conf->cx = numline_offset_size, conf->cy++;
+        conf->cx = numline_offset_size + row->indentation;
+        conf->cy++;
     }
     return res;
 }

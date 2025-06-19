@@ -58,7 +58,7 @@ int editor_syntax_to_color_row(enum EditorHighlight hl) {
 
 int editor_syntax_highlight_select(struct EditorConfig* conf) {
     /*
-            !strcmp(a, b) is equivalent to strcmp(a, b) == 0
+            ?strcmp(a, b) is equivalent to strcmp(a, b) == 0
     */
 
     conf->syntax = NULL;
