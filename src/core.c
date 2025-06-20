@@ -29,6 +29,30 @@ int count_digits(int n) {
     return res;
 }
 
+// this function basically calculates "indentations"
+int count_first_tabs(char* s, size_t len) {
+    int count = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (s[i] == '\t')
+            count++;
+        else
+            break;
+    }
+    return count;
+}
+
+// same functionality as above just with spaces
+int count_first_spaces(char* s, size_t len) {
+    int count = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (s[i] == ' ')
+            count++;
+        else
+            break;
+    }
+    return count;
+}
+
 // MEMORY
 
 int swap(void* a, void* b, size_t elsize) {

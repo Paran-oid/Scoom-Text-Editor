@@ -13,6 +13,8 @@ void die(const char* s);
 bool is_separator(unsigned char c);
 
 int count_digits(int n);
+int count_first_tabs(char* s, size_t len);
+int count_first_spaces(char* s, size_t len);
 
 /* Memory */
 int swap(void* a, void* b, size_t elsize);

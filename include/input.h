@@ -2,6 +2,7 @@
 #define INPUT_H
 
 struct EditorConfig;
+struct Row;
 
 enum EditorKey {
     BACKSPACE = 127,

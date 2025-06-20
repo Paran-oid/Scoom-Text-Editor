@@ -408,6 +408,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
 
 int editor_insert_newline(struct EditorConfig *conf) {
     struct Row *row;
+
     if (conf->numrows) {
         row = &conf->rows[conf->cy];
     } else {
@@ -415,52 +416,27 @@ int editor_insert_newline(struct EditorConfig *conf) {
         row = &conf->rows[0];
         return SUCCESS;
     }
+
     int numline_offset_size = editor_row_numline_calculate(row);
+    int initial_indentation = row->indentation;
+    int indent = row->indentation;  // modified indentation (if needed)
     int res;
+
     if (conf->cx == numline_offset_size) {
         res = editor_insert_row(conf, conf->cy, "", 0);
     } else {
-        // !we got to account for any form of indentation
+        //! logic to be inserted here
 
-        int indent = row->indentation;
-        // we got to check if there is any sort of brackets
-        bool in_string = false;
-        bool to_indent = false;
+        char *newline;
+        size_t len;
+        editor_row_indent(conf, row, &newline, &len);
 
-        // TODO: start working on this part
-        // for (size_t i = 0; i < conf->rx; i++) {
-        //     char c = row->render[i];
+        // update the indent value to that of the inserted's line
+        indent = count_first_tabs(newline, len);
+        // inserting the new line
 
-        //     if (c == '"' && (i == 0 || row->render[i - 1] != '\\')) {
-        //         in_string = !in_string;
-        //         continue;
-        //     }
-
-        //     if (!in_string) {
-        //         if (c == '{') {
-        //             to_indent = true;
-        //         }
-        //     }
-        // }
-
-        // TODO: fix this mess
-        if (to_indent) indent++;
-        int remainder_len = row->size - conf->cx + numline_offset_size;
-        char *remainder = &row->chars[conf->cx - numline_offset_size];
-
-        char *newline = malloc(remainder_len + indent + 1);
-        if (!newline) return OUT_OF_MEMORY;
-
-        memset(newline, '\t', indent);
-        memcpy(&newline[indent], remainder, remainder_len);
-        newline[remainder_len + indent] = '\0';
-
-        // TODO: make it not bug when entering a new line when pressing enter
-        // inside a sentence
-        res = editor_insert_row(conf, conf->cy + 1, newline,
-                                indent + remainder_len);
+        res = editor_insert_row(conf, conf->cy + 1, newline, len);
         free(newline);
-        {}
 
         row = &conf->rows[conf->cy];  // realloc could make our pointer invalid
                                       // so we need to point there once again
@@ -469,7 +445,7 @@ int editor_insert_newline(struct EditorConfig *conf) {
         row->chars[row->size] = '\0';
         editor_update_row(conf, row);
 
-        // numline could have changed to a bigger degree
+        // numline could have changed to a bigger number
         // so an update is necessary without the already made up call
         int new_temp = count_digits(row->idx + 2) + 1;
         if (new_temp != numline_offset_size) {
@@ -479,6 +455,19 @@ int editor_insert_newline(struct EditorConfig *conf) {
     if (res == SUCCESS && numline_offset_size) {
         conf->cx = numline_offset_size + row->indentation;
         conf->cy++;
+
+        if (indent > initial_indentation) {
+            conf->cx++;
+        } else if (indent < initial_indentation) {
+            conf->cx--;
+            if (conf->cx < numline_offset_size) {
+                conf->cx = numline_offset_size;
+            }
+        }
+
+        if (conf->cx < numline_offset_size) {
+            conf->cx = numline_offset_size;
+        }
     }
     return res;
 }

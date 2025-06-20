@@ -67,16 +67,9 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
 
     // copy spaces if any
     // copy the content
-    conf->rows[at].indentation = (conf->cy > 0 && conf->cy < conf->numrows - 1)
-                                     ? conf->rows[at - 1].indentation
-                                     : 0;
+    memcpy(conf->rows[at].chars, content, content_len);
 
-    memset(conf->rows[at].chars, '\t', conf->rows[at].indentation);
-    memcpy(conf->rows[at].chars + conf->rows[at].indentation, content,
-           content_len);
-
-    conf->rows[at].chars[content_len + conf->rows[at].indentation] = '\0';
-
+    conf->rows[at].chars[content_len] = '\0';
     conf->rows[at].render = NULL;
     conf->rows[at].rsize = 0;
     conf->rows[at].hl = NULL;
@@ -276,6 +269,81 @@ int editor_update_cx_rx(struct Row* row, int cx) {
         }
     }
     return rx;
+}
+
+// TODO: we got to account for any form of indentation (tabs and spaces)
+int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
+                      size_t* len) {
+    // TODO: maybe add these as parameters instead of recalculating
+
+    int numline_offset_size = editor_row_numline_calculate(row);
+    int initial_indentation = row->indentation;
+    int indent = row->indentation;  // modified indentation (if needed)
+
+    bool in_string = false;
+
+    // stack will work great to know if an indentation is essential
+
+    Stack* s = malloc(sizeof(Stack));
+    stack_create(s, NULL, free);
+
+    for (size_t i = 0; i < conf->cx - numline_offset_size; i++) {
+        char c = row->chars[i];
+
+        if (c == '"' && (i == 0 || row->chars[i - 1] != '\\')) {
+            in_string = !in_string;
+            continue;
+        }
+        if (!in_string) {
+            char* data;
+            if (c == '{') {
+                data = strdup("{");
+                stack_push(s, data);
+            } else if (c == '}') {
+                char* peaked = stack_peek(s);
+                void* ptr;
+                if (peaked && strcmp(peaked, "{") == 0) {
+                    stack_pop(s, &ptr);
+                    free(ptr);
+                } else {
+                    data = strdup("}");
+                    stack_push(s, data);
+                }
+            }
+        }
+    }
+
+    /*
+        If we encounter an open bracket we increase
+        identation, else we decrease it
+    */
+
+    ListNode* curr = s->head;
+    while (curr != NULL) {
+        char* data = (char*)curr->data;
+        *data == '{' ? indent++ : indent--;
+        curr = curr->next;
+        free(data);
+    }
+
+    indent = indent < 0 ? 0 : indent;  // verify it's not less than 0
+
+    free(s);
+
+    int remainder_len = row->size - conf->cx + numline_offset_size;
+    char* remainder = &row->chars[conf->cx - numline_offset_size];
+
+    char* newline = malloc(remainder_len + indent + 1);
+    if (!newline) return OUT_OF_MEMORY;
+
+    memset(newline, '\t', indent);
+    memcpy(&newline[indent], remainder, remainder_len);
+    newline[remainder_len + indent] = '\0';
+
+    *data = newline;
+    *len = remainder_len + indent;
+
+    return SUCCESS;
 }
 
 int editor_update_rx_cx(struct Row* row, int rx) {

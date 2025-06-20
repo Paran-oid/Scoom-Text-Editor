@@ -39,6 +39,13 @@ int editor_string_to_rows(struct EditorConfig* conf, char* buffer);
 int editor_row_append_string(struct EditorConfig* conf, struct Row* row,
                              char* s, size_t slen);
 
+/*
+ * return newline formed in newline paramter
+ * set it's length in len parameter
+ */
+int editor_row_indent(struct EditorConfig* conf, struct Row* row,
+                      char** newline, size_t* len);
+
 int editor_update_cx_rx(struct Row* row, int cx);
 int editor_update_rx_cx(struct Row* row, int rx);
 
