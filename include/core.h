@@ -10,7 +10,11 @@
 #define ISCHAR(c) (('A' <= (c) && (c) <= 'Z') || ('a' <= (c) && (c) <= 'z'))
 
 void die(const char* s);
-bool is_separator(unsigned char c);
+
+bool check_seperator(unsigned char c);
+bool check_compound_statement(char* str, size_t len);
+
+/* Counting */
 
 int count_digits(int n);
 int count_first_tabs(char* s, size_t len);
