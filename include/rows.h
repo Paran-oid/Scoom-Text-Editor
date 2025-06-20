@@ -26,6 +26,8 @@ int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at);
 int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
                       size_t content_size);
 
+
+int editor_modify_row(struct EditorConfig* conf, struct Row* row);
 int editor_update_row(struct EditorConfig* conf, struct Row* row);
 int editor_delete_row(struct EditorConfig* conf, int at);
 
@@ -34,6 +36,7 @@ int editor_delete_char(struct EditorConfig* conf);
 
 int editor_rows_to_string(struct EditorConfig* conf, char** result,
                           size_t* result_size);
+
 int editor_string_to_rows(struct EditorConfig* conf, char* buffer);
 
 int editor_row_append_string(struct EditorConfig* conf, struct Row* row,

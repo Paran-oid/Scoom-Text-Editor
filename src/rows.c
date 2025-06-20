@@ -83,13 +83,16 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
     return SUCCESS;
 }
 
+// TODO
+int editor_modify_row(struct EditorConfig* conf, struct Row* row) {}
+
 int editor_update_row(struct EditorConfig* conf, struct Row* row) {
     free(row->render);
     // we need to check how much memory to allocate for the renderer
     int tabs = 0;
     size_t n = 0;
     for (size_t j = 0; j < row->size; j++) {
-        // TODO: make user able to choose how to indent stuff
+        // TODO: make user able to choose between tab and spaces
         if (row->chars[j] == '\t') {
             tabs++;
         }

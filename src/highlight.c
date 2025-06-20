@@ -180,7 +180,7 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
                 if (is_kw2) klen--;
 
                 if ((strncmp(&row->render[i], keywords[j], klen) == 0) &&
-                    is_separator(
+                    check_seperator(
                         row->render[i + klen])  // we added section condition
                                                 // cuz \0 is also a separator
                                                 // technically
@@ -194,7 +194,7 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
             }
         }
 
-        prev_separator = is_separator((unsigned char)c);
+        prev_separator = check_seperator((unsigned char)c);
         i++;
     }
 

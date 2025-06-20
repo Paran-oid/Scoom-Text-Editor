@@ -427,16 +427,41 @@ int editor_insert_newline(struct EditorConfig *conf) {
     } else {
         //! logic to be inserted here
 
-        char *newline;
-        size_t len;
-        editor_row_indent(conf, row, &newline, &len);
+        bool check_block = check_compound_statement(row->chars, row->size);
+        if (check_block) {
+            if (indent) {
+                res = editor_insert_row(conf, conf->cy + 1, "\t", indent);
+            } else {
+                res = editor_insert_row(conf, conf->cy + 1, "", 0);
+            }
 
-        // update the indent value to that of the inserted's line
-        indent = count_first_tabs(newline, len);
-        // inserting the new line
+            // ! MAKE THIS LOGIC VALID TO STIMULATE BLOCK INDENTATION
+            // ! DEVELOP editor_modify_row FUNC to update modified row content
+            // ! CONSIDER USING editor_modify_row for other functions
+            char *remainder = strstr(row->chars, "}");
+            size_t remainder_len = strlen(remainder);
+            int index_of_bracket = (intptr_t)remainder - (intptr_t)row->chars;
+            row->chars = realloc(row->chars, index_of_bracket);
 
-        res = editor_insert_row(conf, conf->cy + 1, newline, len);
-        free(newline);
+            editor_update_row(conf, row);
+
+            editor_insert_row(conf, conf->cy + 2, remainder, remainder_len);
+            /// aziz{}azz
+            // decrease size of block row by removing x } after cx
+            // add x } to beginning of next line after the empty line
+
+        } else {
+            char *newline;
+            size_t len;
+            editor_row_indent(conf, row, &newline, &len);
+
+            // update the indent value to that of the inserted's line
+            indent = count_first_tabs(newline, len);
+
+            // Insert new line.
+            res = editor_insert_row(conf, conf->cy + 1, newline, len);
+            free(newline);
+        }
 
         row = &conf->rows[conf->cy];  // realloc could make our pointer invalid
                                       // so we need to point there once again

@@ -14,8 +14,51 @@ void die(const char* s) {
     exit(EXIT_FAILURE);
 }
 
-bool is_separator(unsigned char c) {
+bool check_seperator(unsigned char c) {
     return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != NULL;
+}
+
+bool check_compound_statement(char* str, size_t len) {
+    Stack* s = malloc(sizeof(Stack));
+    stack_create(s, NULL, free);
+
+    bool in_string = false;
+
+    for (size_t i = 0; i < len; i++) {
+        char c = str[i];
+
+        if (c == '"' && (i == 0 || str[i - 1] != '\\')) {
+            in_string = !in_string;
+            continue;
+        }
+        if (!in_string) {
+            char* data;
+            if (c == '{') {
+                data = strdup("{");
+                stack_push(s, data);
+            } else if (c == '}') {
+                char* peaked = stack_peek(s);
+                void* ptr;
+                if (peaked && strcmp(peaked, "{") == 0) {
+                    stack_pop(s, &ptr);
+                    free(ptr);
+                } else {
+                    data = strdup("}");
+                    stack_push(s, data);
+                }
+            }
+        }
+    }
+
+    /*
+        If we encounter an open bracket we increase
+        identation, else we decrease it
+    */
+
+    bool isempty = stack_size(s) == 0;
+    free(s);
+
+    return isempty;
 }
 
 int count_digits(int n) {
