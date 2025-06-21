@@ -395,6 +395,15 @@ int editor_process_key_press(struct EditorConfig *conf) {
             }
 
             editor_insert_char(conf, c);
+
+            if (check_is_paranthesis(c)) {
+                char extra_appended = closing_paren(c);
+                if (c) {
+                    editor_insert_char(conf, extra_appended);
+                    conf->cx--;
+                }
+            }
+
             conf->last_time_modified = current_time;
 
             break;
@@ -426,33 +435,51 @@ int editor_insert_newline(struct EditorConfig *conf) {
         res = editor_insert_row(conf, conf->cy, "", 0);
     } else {
         //! logic to be inserted here
+        // TODO: improve indent variable name...
+        // TODO: make sure to do this only when cursor is inside the block...
 
         bool check_block = check_compound_statement(row->chars, row->size);
-        if (check_block) {
-            if (indent) {
-                res = editor_insert_row(conf, conf->cy + 1, "\t", indent);
-            } else {
-                res = editor_insert_row(conf, conf->cy + 1, "", 0);
-            }
+        bool in_brackets = check_is_in_brackets(row->chars, row->size,
+                                                conf->cx - numline_offset_size);
+        // we need to make sure cursor is between brackets { (cursor) }
 
-            // ! MAKE THIS LOGIC VALID TO STIMULATE BLOCK INDENTATION
-            // ! DEVELOP editor_modify_row FUNC to update modified row content
-            // ! CONSIDER USING editor_modify_row for other functions
+        if (check_block && in_brackets) {
             char *remainder = strstr(row->chars, "}");
-            size_t remainder_len = strlen(remainder);
-            int index_of_bracket = (intptr_t)remainder - (intptr_t)row->chars;
+			// TODO: fix this bug
+            size_t remainder_len = strlen(remainder) + indent;
+            int index_of_bracket = remainder - row->chars;
+
+            {}
+            char *temp = malloc(remainder_len);
+            temp[remainder_len] = '\0';
+            memset(temp, '\t', indent);
+            memcpy(temp + indent, remainder, remainder_len - indent);
+
+            remainder = temp;
+
             row->chars = realloc(row->chars, index_of_bracket);
+            row->chars[index_of_bracket] = '\0';
+            char *content = strdup(row->chars);
+            size_t content_size = strlen(content);
 
-            editor_update_row(conf, row);
+            editor_delete_row(conf, conf->cy);
+            editor_insert_row(conf, conf->cy, content, content_size);
 
-            editor_insert_row(conf, conf->cy + 2, remainder, remainder_len);
-            /// aziz{}azz
-            // decrease size of block row by removing x } after cx
-            // add x } to beginning of next line after the empty line
+            indent++;
+            char *indented_line = malloc(indent);
+            memset(indented_line, '\t', indent);
+            indented_line[indent] = '\0';
 
+            editor_insert_row(conf, conf->cy + 1, indented_line, indent);
+            res =
+                editor_insert_row(conf, conf->cy + 2, remainder, remainder_len);
+
+            free(remainder);
+            free(content);
         } else {
             char *newline;
             size_t len;
+
             editor_row_indent(conf, row, &newline, &len);
 
             // update the indent value to that of the inserted's line
@@ -461,14 +488,15 @@ int editor_insert_newline(struct EditorConfig *conf) {
             // Insert new line.
             res = editor_insert_row(conf, conf->cy + 1, newline, len);
             free(newline);
+
+            row = &conf->rows[conf->cy];  // realloc could make our pointer
+                                          // invalid so we need to point there
+                                          // once again
+
+            row->size = conf->cx - numline_offset_size;
+            row->chars[row->size] = '\0';
+            editor_update_row(conf, row);
         }
-
-        row = &conf->rows[conf->cy];  // realloc could make our pointer invalid
-                                      // so we need to point there once again
-
-        row->size = conf->cx - numline_offset_size;
-        row->chars[row->size] = '\0';
-        editor_update_row(conf, row);
 
         // numline could have changed to a bigger number
         // so an update is necessary without the already made up call

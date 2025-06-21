@@ -82,9 +82,12 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
 
     return SUCCESS;
 }
-
-// TODO
-int editor_modify_row(struct EditorConfig* conf, struct Row* row) {}
+// TODO: once created this function use it in other needed programs.
+int editor_modify_row(struct EditorConfig* conf, struct Row* row) {
+    (void)row;
+    (void)conf;
+    return SUCCESS;
+}
 
 int editor_update_row(struct EditorConfig* conf, struct Row* row) {
     free(row->render);
@@ -166,8 +169,18 @@ int editor_delete_char(struct EditorConfig* conf) {
         return CURSOR_OUT_OF_BOUNDS;
 
     if (conf->cx > numline_offset_size) {
-        int res = editor_delete_row_char(conf, &conf->rows[conf->cy],
-                                         conf->cx - numline_offset_size - 1);
+        int at = conf->cx - numline_offset_size;
+        struct Row* row = &conf->rows[conf->cy];
+        char currchar = row->chars[at - 1];
+        // handle automated paranthesis removal
+        if (check_is_paranthesis(currchar)) {
+            char next_char = row->chars[at];
+            if (closing_paren(currchar) == next_char) {
+                editor_delete_row_char(conf, &conf->rows[conf->cy], at);
+            }
+        }
+
+        int res = editor_delete_row_char(conf, &conf->rows[conf->cy], at - 1);
         conf->cx--;
         return res;
     } else {
@@ -178,7 +191,7 @@ int editor_delete_char(struct EditorConfig* conf) {
         editor_delete_row(conf, conf->cy);
         conf->cy--;
     }
-    return 2;
+    return ERROR;
 }
 
 int editor_rows_to_string(struct EditorConfig* conf, char** result,
@@ -278,9 +291,7 @@ int editor_update_cx_rx(struct Row* row, int cx) {
 int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
                       size_t* len) {
     // TODO: maybe add these as parameters instead of recalculating
-
     int numline_offset_size = editor_row_numline_calculate(row);
-    int initial_indentation = row->indentation;
     int indent = row->indentation;  // modified indentation (if needed)
 
     bool in_string = false;
@@ -290,7 +301,7 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
     Stack* s = malloc(sizeof(Stack));
     stack_create(s, NULL, free);
 
-    for (size_t i = 0; i < conf->cx - numline_offset_size; i++) {
+    for (size_t i = 0; i < (size_t)conf->cx - numline_offset_size; i++) {
         char c = row->chars[i];
 
         if (c == '"' && (i == 0 || row->chars[i - 1] != '\\')) {
@@ -367,6 +378,6 @@ int editor_update_rx_cx(struct Row* row, int rx) {
 }
 
 // numline has a variable length so we need a respective function for it
-int editor_row_numline_calculate(struct Row* row) {
+int editor_row_numline_calculate(const struct Row* row) {
     return count_digits(row->idx + 1) + 1;
 }

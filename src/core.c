@@ -7,18 +7,37 @@
 
 #include "config.h"
 
-// MISC
+/* Misc */
 
 void die(const char* s) {
     perror(s);
     exit(EXIT_FAILURE);
 }
 
+char closing_paren(char c) {
+    switch (c) {
+        case '{':
+            return '}';
+        case '(':
+            return ')';
+        case '[':
+            return ']';
+        default:
+            return '\0';  // or c, or 0 to indicate no match
+    }
+}
+
+/* Checking */
+
 bool check_seperator(unsigned char c) {
     return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != NULL;
 }
 
 bool check_compound_statement(char* str, size_t len) {
+    if (count_char(str, len, '{') == 0 && count_char(str, len, '}') == 0) {
+        return false;
+    }
+
     Stack* s = malloc(sizeof(Stack));
     stack_create(s, NULL, free);
 
@@ -50,15 +69,57 @@ bool check_compound_statement(char* str, size_t len) {
         }
     }
 
-    /*
-        If we encounter an open bracket we increase
-        identation, else we decrease it
-    */
-
     bool isempty = stack_size(s) == 0;
     free(s);
 
     return isempty;
+}
+
+bool check_is_in_brackets(char* str, size_t len, int cx) {
+    int brackets = 0;
+    bool in_string = false;
+
+    size_t i = 0;
+    for (; i < (size_t)cx && i < len; i++) {
+        char c = str[i];
+
+        if (c == '"' && (i == 0 || str[i - 1] != '\\')) {
+            in_string = !in_string;
+            continue;
+        }
+
+        if (!in_string) {
+            if (c == '{') {
+                brackets++;
+            } else if (c == '}') {
+                if (brackets > 0) brackets--;
+            } else {
+                brackets = 0;
+            }
+        }
+    }
+
+    if (brackets <= 0) return false;
+
+    while (i < len) {
+        if (str[i] == '}') return true;
+    }
+
+    return false;
+}
+
+inline bool check_is_paranthesis(char c) {
+    return c == '{' || c == '(' || c == '[';
+}
+
+/* Counting */
+
+int count_char(char* str, size_t size, char c) {
+    int total = 0;
+    for (size_t i = 0; i < size; i++) {
+        if (str[i] == c) total++;
+    }
+    return total;
 }
 
 int count_digits(int n) {

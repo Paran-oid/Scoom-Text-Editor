@@ -26,7 +26,6 @@ int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at);
 int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
                       size_t content_size);
 
-
 int editor_modify_row(struct EditorConfig* conf, struct Row* row);
 int editor_update_row(struct EditorConfig* conf, struct Row* row);
 int editor_delete_row(struct EditorConfig* conf, int at);
@@ -52,6 +51,6 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row,
 int editor_update_cx_rx(struct Row* row, int cx);
 int editor_update_rx_cx(struct Row* row, int rx);
 
-int editor_row_numline_calculate(struct Row* row);
+int editor_row_numline_calculate(const struct Row* row);
 
 #endif
