@@ -51,9 +51,10 @@ void term_create(struct EditorConfig* conf) {
     conf->orig_termios.c_cc[VTIME] = 1;
 
     // Hide terminal's scrollbar
-    if (write(STDOUT_FILENO, "\x1b[?1049h", 9) == -1) {
-        die("couldn't hide terminal's scrollbar");
-    }
+    // TODO: reenable
+    // if (write(STDOUT_FILENO, "\x1b[?1049h", 9) == -1) {
+    //     die("couldn't hide terminal's scrollbar");
+    // }
 
     // signal(interrupt) handling
     struct sigaction sa;
@@ -75,9 +76,10 @@ void term_exit(void) {
                   &((struct EditorConfig*)g_conf)->orig_termios) == -1) {
         die("tcsetattr");
     }
+    // TODO: disable
     // Show terminal scrollbar
-    if (write(STDOUT_FILENO, "\x1b[?1049l", 9) == -1)
-        die("couldn't show terminal scrollbar");
+    // if (write(STDOUT_FILENO, "\x1b[?1049l", 9) == -1)
+    //     die("couldn't show terminal scrollbar");
 }
 
 int term_get_window_size(struct EditorConfig* conf, int* rows, int* cols) {

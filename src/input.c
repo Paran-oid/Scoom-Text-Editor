@@ -12,6 +12,8 @@
 #include "rows.h"
 #include "terminal.h"
 
+// TODO: once you allow spaces as indentation modify this inorder for it to work
+// TODO: for both /t and spaces
 int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
     if (conf->cy < 0 || conf->cy >= conf->numrows) return CURSOR_OUT_OF_BOUNDS;
 
@@ -40,11 +42,26 @@ int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
             conf->cx++;
 
     } else {
-        while (conf->cx != numline_size &&
-               (row->chars[conf->cx - numline_size] == '\t' ||
-                row->chars[conf->cx - numline_size - 1] == '\t'))
-            conf->cx--;
-
+        // skip any
+        bool decreased = false;
+        while (conf->cx > numline_size) {
+            int cursor_in_row = conf->cx - numline_size;
+            if (cursor_in_row > 0 && row->chars[cursor_in_row - 1] == '\t') {
+                conf->cx--;
+                decreased = true;
+            } else if ((size_t)cursor_in_row != row->size &&
+                       row->chars[cursor_in_row] == '\t') {
+                conf->cx--;
+                decreased = true;
+            } else {
+                break;
+            }
+            // if it hasn't decreased and didn't leave just decrease it
+            if (!decreased) {
+                conf->cx--;
+            }
+            decreased = false;
+        }
         if (conf->cx == numline_size) {
             conf->cy--;
             if (conf->cy < 0) {
@@ -257,10 +274,6 @@ int editor_process_key_press(struct EditorConfig *conf) {
             conf->screen_rows -= 2;  // for prompt and message rows
             break;
         case '\r':
-            // TODO: if current char is { make sure to create some kind of
-            // indent next
-            // line
-
             s = malloc(sizeof(struct Snapshot));
             snapshot_create(conf, s);
             stack_push(conf->stack_undo, s);
@@ -289,6 +302,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
             }
             break;
 
+            // TODO: fix crash when clicking these two
         case CTRL_ARROW_LEFT:
         case CTRL_ARROW_RIGHT:
             editor_cursor_ctrl(conf, c);
@@ -416,111 +430,111 @@ int editor_process_key_press(struct EditorConfig *conf) {
 }
 
 int editor_insert_newline(struct EditorConfig *conf) {
-    struct Row *row;
+    struct Row *current_row;
 
     if (conf->numrows) {
-        row = &conf->rows[conf->cy];
+        current_row = &conf->rows[conf->cy];
     } else {
         editor_insert_row(conf, 0, "", 0);
-        row = &conf->rows[0];
+        current_row = &conf->rows[0];
         return SUCCESS;
     }
 
-    int numline_offset_size = editor_row_numline_calculate(row);
-    int initial_indentation = row->indentation;
-    int indent = row->indentation;  // modified indentation (if needed)
-    int res;
+    int numline_prefix_width = editor_row_numline_calculate(current_row);
+    int original_indent = current_row->indentation;
+    int new_indent = current_row->indentation;
+    int result;
 
-    if (conf->cx == numline_offset_size) {
-        res = editor_insert_row(conf, conf->cy, "", 0);
+    if (conf->cx == numline_prefix_width) {
+        result = editor_insert_row(conf, conf->cy, "", 0);
     } else {
-        //! logic to be inserted here
-        // TODO: improve indent variable name...
-        // TODO: make sure to do this only when cursor is inside the block...
+        bool is_compound_block =
+            check_compound_statement(current_row->chars, current_row->size);
+        bool cursor_inside_brackets =
+            check_is_in_brackets(current_row->chars, current_row->size,
+                                 conf->cx - numline_prefix_width);
 
-        bool check_block = check_compound_statement(row->chars, row->size);
-        bool in_brackets = check_is_in_brackets(row->chars, row->size,
-                                                conf->cx - numline_offset_size);
-        // we need to make sure cursor is between brackets { (cursor) }
+        if (is_compound_block && cursor_inside_brackets) {
+            char *bracket_remainder_start = strstr(current_row->chars, "}");
+            size_t bracket_pos = bracket_remainder_start - current_row->chars;
+            size_t remainder_length = current_row->size - bracket_pos;
 
-        if (check_block && in_brackets) {
-            char *remainder = strstr(row->chars, "}");
-			// TODO: fix this bug
-            size_t remainder_len = strlen(remainder) + indent;
-            int index_of_bracket = remainder - row->chars;
+            char *indented_remainder =
+                malloc(remainder_length + new_indent + 1);
+            size_t indented_remainder_len = remainder_length + new_indent;
 
-            {}
-            char *temp = malloc(remainder_len);
-            temp[remainder_len] = '\0';
-            memset(temp, '\t', indent);
-            memcpy(temp + indent, remainder, remainder_len - indent);
+            memset(indented_remainder, '\t', new_indent);
+            memcpy(indented_remainder + new_indent, bracket_remainder_start,
+                   remainder_length);
+            indented_remainder[indented_remainder_len] = '\0';
 
-            remainder = temp;
+            current_row->chars = realloc(current_row->chars, bracket_pos + 1);
+            current_row->chars[bracket_pos] = '\0';
 
-            row->chars = realloc(row->chars, index_of_bracket);
-            row->chars[index_of_bracket] = '\0';
-            char *content = strdup(row->chars);
-            size_t content_size = strlen(content);
+            char *truncated_line = strdup(current_row->chars);
+            size_t truncated_line_len = strlen(truncated_line);
 
             editor_delete_row(conf, conf->cy);
-            editor_insert_row(conf, conf->cy, content, content_size);
+            editor_insert_row(conf, conf->cy, truncated_line,
+                              truncated_line_len);
 
-            indent++;
-            char *indented_line = malloc(indent);
-            memset(indented_line, '\t', indent);
-            indented_line[indent] = '\0';
+            new_indent++;
+            char *empty_indented_line = malloc(new_indent + 1);
+            memset(empty_indented_line, '\t', new_indent);
+            empty_indented_line[new_indent] = '\0';
 
-            editor_insert_row(conf, conf->cy + 1, indented_line, indent);
-            res =
-                editor_insert_row(conf, conf->cy + 2, remainder, remainder_len);
+            editor_insert_row(conf, conf->cy + 1, empty_indented_line,
+                              new_indent);
+            result = editor_insert_row(conf, conf->cy + 2, indented_remainder,
+                                       indented_remainder_len);
 
-            free(remainder);
-            free(content);
+            free(indented_remainder);
+            free(truncated_line);
+            free(empty_indented_line);
         } else {
             char *newline;
-            size_t len;
+            size_t newline_len;
 
-            editor_row_indent(conf, row, &newline, &len);
+            editor_row_indent(conf, current_row, &newline, &newline_len);
+            new_indent = count_first_tabs(newline, newline_len);
 
-            // update the indent value to that of the inserted's line
-            indent = count_first_tabs(newline, len);
-
-            // Insert new line.
-            res = editor_insert_row(conf, conf->cy + 1, newline, len);
+            result =
+                editor_insert_row(conf, conf->cy + 1, newline, newline_len);
             free(newline);
 
-            row = &conf->rows[conf->cy];  // realloc could make our pointer
-                                          // invalid so we need to point there
-                                          // once again
-
-            row->size = conf->cx - numline_offset_size;
-            row->chars[row->size] = '\0';
-            editor_update_row(conf, row);
+            current_row = &conf->rows[conf->cy];
+            current_row->size = conf->cx - numline_prefix_width;
+            current_row->chars[current_row->size] = '\0';
+            editor_update_row(conf, current_row);
         }
 
-        // numline could have changed to a bigger number
-        // so an update is necessary without the already made up call
-        int new_temp = count_digits(row->idx + 2) + 1;
-        if (new_temp != numline_offset_size) {
-            numline_offset_size = new_temp;
+        current_row = &conf->rows[conf->cy];
+
+        int updated_prefix_width = count_digits(current_row->idx + 2) + 1;
+        if (updated_prefix_width != numline_prefix_width) {
+            numline_prefix_width = updated_prefix_width;
         }
     }
-    if (res == SUCCESS && numline_offset_size) {
-        conf->cx = numline_offset_size + row->indentation;
+
+    current_row = &conf->rows[conf->cy];
+
+    if (result == SUCCESS && numline_prefix_width) {
+        conf->cx = numline_prefix_width + current_row->indentation;
         conf->cy++;
 
-        if (indent > initial_indentation) {
+        if (new_indent > original_indent) {
             conf->cx++;
-        } else if (indent < initial_indentation) {
+        } else if (new_indent < original_indent) {
             conf->cx--;
-            if (conf->cx < numline_offset_size) {
-                conf->cx = numline_offset_size;
+            if (conf->cx < numline_prefix_width) {
+                conf->cx = numline_prefix_width;
             }
         }
 
-        if (conf->cx < numline_offset_size) {
-            conf->cx = numline_offset_size;
+        if (conf->cx < numline_prefix_width) {
+            conf->cx = numline_prefix_width;
         }
     }
-    return res;
+
+    return result;
 }

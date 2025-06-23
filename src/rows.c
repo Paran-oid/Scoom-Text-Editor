@@ -287,10 +287,8 @@ int editor_update_cx_rx(struct Row* row, int cx) {
     return rx;
 }
 
-// TODO: we got to account for any form of indentation (tabs and spaces)
 int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
                       size_t* len) {
-    // TODO: maybe add these as parameters instead of recalculating
     int numline_offset_size = editor_row_numline_calculate(row);
     int indent = row->indentation;  // modified indentation (if needed)
 
