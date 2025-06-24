@@ -165,16 +165,13 @@ int editor_read_key(void) {
     char c;
     int nread;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
-        if (nread == -1) {
-            if (errno == EINTR) {
-                return INTERRUPT_ENCOUNTERED;
-            }
-            if (errno != EAGAIN) die("read");
+        if (nread == -1 && errno != EAGAIN && errno != EINTR) {
+            die("read");
         }
     }
 
     if (c == '\x1b') {
-        char seq[5];
+        char seq[32];
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
         if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
         if (seq[0] == '[') {
@@ -302,7 +299,6 @@ int editor_process_key_press(struct EditorConfig *conf) {
             }
             break;
 
-            // TODO: fix crash when clicking these two
         case CTRL_ARROW_LEFT:
         case CTRL_ARROW_RIGHT:
             editor_cursor_ctrl(conf, c);

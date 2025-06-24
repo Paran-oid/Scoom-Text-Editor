@@ -82,13 +82,6 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
 
     return SUCCESS;
 }
-// TODO: once created this function use it in other needed programs.
-int editor_modify_row(struct EditorConfig* conf, struct Row* row) {
-    (void)row;
-    (void)conf;
-    return SUCCESS;
-}
-
 int editor_update_row(struct EditorConfig* conf, struct Row* row) {
     free(row->render);
     // we need to check how much memory to allocate for the renderer

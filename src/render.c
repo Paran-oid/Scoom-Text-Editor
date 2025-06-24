@@ -263,6 +263,8 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
 /* this function is responsible for both the scrolling and incase of the array
  getting resized*/
 int editor_scroll(struct EditorConfig *conf) {
+    if (conf->numrows == 0) return EMPTY_BUFFER;
+
     if (conf->resize_needed) {
         term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols);
         conf->resize_needed = 0;

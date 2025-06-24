@@ -25,6 +25,26 @@ static void term_size_flag_update(int sig) {
     }
 }
 
+static void cleanup(void) {
+    if (!g_conf ||
+        tcsetattr(STDIN_FILENO, TCSAFLUSH,
+                  &((struct EditorConfig*)g_conf)->orig_termios) == -1) {
+        die("tcsetattr");
+    }
+    // Show terminal scrollbar
+    if (write(STDOUT_FILENO, "\x1b[?1049l", 9) == -1) {
+        die("couldn't show terminal scrollbar");
+    }
+
+    // if (write(STDOUT_FILENO, "\x1b[?1000l", 9) <= 0) {
+    //     die("couldn't disable mouse click");  // Disable mouse click
+    //                                           // tracking
+    // }
+    // if (write(STDOUT_FILENO, "\x1b[?1006l", 9) <= 0) {
+    //     die("couldn't disable SGR");  // Disable SGR mode
+    // }
+}
+
 void term_create(struct EditorConfig* conf) {
     if (tcgetattr(STDIN_FILENO, &conf->orig_termios) == -1) {
         die("tcgetattr");
@@ -37,7 +57,7 @@ void term_create(struct EditorConfig* conf) {
     */
     g_conf = malloc(sizeof(struct EditorConfig));
     memcpy(g_conf, conf, sizeof(struct EditorConfig));
-    atexit(term_exit);
+    atexit(cleanup);
 
     conf->orig_termios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
     conf->orig_termios.c_oflag &= ~(OPOST);
@@ -51,10 +71,9 @@ void term_create(struct EditorConfig* conf) {
     conf->orig_termios.c_cc[VTIME] = 1;
 
     // Hide terminal's scrollbar
-    // TODO: reenable
-    // if (write(STDOUT_FILENO, "\x1b[?1049h", 9) == -1) {
-    //     die("couldn't hide terminal's scrollbar");
-    // }
+    if (write(STDOUT_FILENO, "\x1b[?1049h", 9) == -1) {
+        die("couldn't hide terminal's scrollbar");
+    }
 
     // signal(interrupt) handling
     struct sigaction sa;
@@ -64,22 +83,25 @@ void term_create(struct EditorConfig* conf) {
                      automatically after a signal if the system uses the
                     SA_RESTART flag. You need to disable this behavior.) */
     sigaction(SIGWINCH, &sa, NULL);
+    signal(SIGSEGV, term_exit);
+    signal(SIGINT, term_exit);
+    signal(SIGTERM, term_exit);
 
+    // if (write(STDOUT_FILENO, "\x1b[?1000h", 9) < 0){
+    //     die("enabling mouse click error");}  // Enable mouse click tracking
+    // if (write(STDOUT_FILENO, "\x1b[?1006h", 9) < 0){
+    //     die("enabling SGR mode error"); } // Enable mouse click tracking
+    //                                      // Enable SGR (1006) mode for xterm
+
+    // apply these settings for stdout
     if (tcsetattr(STDOUT_FILENO, 0, &conf->orig_termios) == -1) {
         die("tcsetattr");
     }
 }
 
-void term_exit(void) {
-    if (!g_conf ||
-        tcsetattr(STDIN_FILENO, TCSAFLUSH,
-                  &((struct EditorConfig*)g_conf)->orig_termios) == -1) {
-        die("tcsetattr");
-    }
-    // TODO: disable
-    // Show terminal scrollbar
-    // if (write(STDOUT_FILENO, "\x1b[?1049l", 9) == -1)
-    //     die("couldn't show terminal scrollbar");
+void term_exit(int sig __attribute__((unused))) {
+    cleanup();
+    exit(SUCCESS);
 }
 
 int term_get_window_size(struct EditorConfig* conf, int* rows, int* cols) {

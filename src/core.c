@@ -157,7 +157,7 @@ int count_first_spaces(char* s, size_t len) {
     return count;
 }
 
-// MEMORY
+// memory
 
 int swap(void* a, void* b, size_t elsize) {
     void* temp = malloc(elsize);
