@@ -1,6 +1,7 @@
 #include "input.h"
 
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -161,7 +162,7 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
     return SUCCESS;
 }
 
-int editor_read_key(void) {
+int editor_read_key(struct EditorConfig *conf) {
     char c;
     int nread;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
@@ -172,9 +173,57 @@ int editor_read_key(void) {
 
     if (c == '\x1b') {
         char seq[32];
+
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
         if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
         if (seq[0] == '[') {
+            if (seq[1] == '<') {
+                // just fill the rest of the seq buf
+                size_t len;
+                if ((len = read(STDIN_FILENO, &seq[2], 29)) <= 0) return '\x1b';
+
+                int rx, cy, button;
+                char event_type;
+
+                // Ensure null-terminated string for sscanf
+                seq[2 + len] = '\0';
+
+                // Use sscanf to extract button, x, y, and the event type
+                // character (M or m)
+
+                // M Mouse button press (event_type) at (x, y)
+                // m Mouse button release (event_type) at (x, y)
+
+                if (sscanf(&seq[2], "%d;%d;%d%c", &button, &rx, &cy,
+                           &event_type) == 4) {
+                    // we will just handle press button
+                    if (event_type == 'M') {
+                        // we need to account for one indexed cursor positions
+                        rx -= 2;
+                        cy--;
+
+                        if (cy > conf->numrows + conf->rowoff)
+                            cy = conf->numrows + conf->rowoff;
+                        if (cy == conf->numrows + conf->rowoff)
+                            return CURSOR_PRESS;
+
+                        struct Row *row = &conf->rows[cy];
+                        int numline_offset = editor_row_numline_calculate(row);
+
+                        if (rx > row->rsize + numline_offset + conf->coloff) {
+                            rx = row->rsize + numline_offset + conf->coloff;
+                        }
+
+                        conf->cx = editor_update_rx_cx(row, rx) +
+                                   numline_offset + conf->coloff;
+                        conf->rx = rx + conf->coloff;
+                        conf->cy = cy + conf->rowoff;
+
+                        return CURSOR_PRESS;
+                    }
+                    return CURSOR_RELEASE;
+                }
+            }
             if ('0' <= seq[1] && seq[1] <= '9') {
                 if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
                 if (seq[2] == '~') {
@@ -257,7 +306,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
     struct Snapshot *s;
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
-    int c = editor_read_key();
+    int c = editor_read_key(conf);
     int times = conf->screen_rows;  // this will be needed in case of page
                                     // up or down basically
 
@@ -265,6 +314,9 @@ int editor_process_key_press(struct EditorConfig *conf) {
     double time_elapsed = difftime(current_time, conf->last_time_modified);
 
     switch (c) {
+        case CURSOR_PRESS:
+        case CURSOR_RELEASE:
+            break;
         case INTERRUPT_ENCOUNTERED:
             conf->resize_needed = 0;
             term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols);

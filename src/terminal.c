@@ -36,13 +36,13 @@ static void cleanup(void) {
         die("couldn't show terminal scrollbar");
     }
 
-    // if (write(STDOUT_FILENO, "\x1b[?1000l", 9) <= 0) {
-    //     die("couldn't disable mouse click");  // Disable mouse click
-    //                                           // tracking
-    // }
-    // if (write(STDOUT_FILENO, "\x1b[?1006l", 9) <= 0) {
-    //     die("couldn't disable SGR");  // Disable SGR mode
-    // }
+    if (write(STDOUT_FILENO, "\x1b[?1000l", 9) <= 0) {
+        die("couldn't disable mouse click");  // Disable mouse click
+                                              // tracking
+    }
+    if (write(STDOUT_FILENO, "\x1b[?1006l", 9) <= 0) {
+        die("couldn't disable SGR");  // Disable SGR mode
+    }
 }
 
 void term_create(struct EditorConfig* conf) {
@@ -82,19 +82,24 @@ void term_create(struct EditorConfig* conf) {
     sa.sa_flags = 0; /* <-- no SA_RESTART (By default, read() may restart
                      automatically after a signal if the system uses the
                     SA_RESTART flag. You need to disable this behavior.) */
+                     // basically flag needed to handle any sort of interrupt
+
     sigaction(SIGWINCH, &sa, NULL);
     signal(SIGSEGV, term_exit);
     signal(SIGINT, term_exit);
     signal(SIGTERM, term_exit);
 
-    // if (write(STDOUT_FILENO, "\x1b[?1000h", 9) < 0){
-    //     die("enabling mouse click error");}  // Enable mouse click tracking
-    // if (write(STDOUT_FILENO, "\x1b[?1006h", 9) < 0){
-    //     die("enabling SGR mode error"); } // Enable mouse click tracking
-    //                                      // Enable SGR (1006) mode for xterm
+    // TODO: make this function
+    if (write(STDOUT_FILENO, "\x1b[?1000h", 9) < 0) {
+        die("enabling mouse click error");
+    }  // Enable mouse click tracking
+    if (write(STDOUT_FILENO, "\x1b[?1006h", 9) < 0) {
+        die("enabling SGR mode error");
+    }  // Enable mouse click tracking
+    // Enable SGR (1006) mode for xterm
 
     // apply these settings for stdout
-    if (tcsetattr(STDOUT_FILENO, 0, &conf->orig_termios) == -1) {
+    if (tcsetattr(STDOUT_FILENO, TCSAFLUSH, &conf->orig_termios) == -1) {
         die("tcsetattr");
     }
 }

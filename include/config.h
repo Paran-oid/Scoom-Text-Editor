@@ -53,6 +53,7 @@ enum EditorStatus {
     ERROR,
     INVALID_ARG,
     OUT_OF_MEMORY,
+    CURSOR_PRESS,
     INTERRUPT_ENCOUNTERED = 666,
 
     // File-related errors
@@ -67,6 +68,7 @@ enum EditorStatus {
     // Editor-specific errors
     SYNTAX_ERROR,
     CURSOR_OUT_OF_BOUNDS,
+    CURSOR_RELEASE,
     EMPTY_BUFFER,
     UNSUPPORTED_OPERATION,
 
