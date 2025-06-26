@@ -1,15 +1,9 @@
-mystr = "}}}{{{}}}}}"
+def main():
+    mystr = 'A' * 10000
 
-mystack = []
+    with open("data.txt", "w") as f:
+        f.write(mystr)
 
-wrong = 0
-for c in mystr:
-    if c == '{':
-        mystack.append(c)
-    else:
-        if mystack and mystack[-1] == '{':
-            mystack.pop()
-        else:
-            wrong += 1
 
-print(wrong)
+if __name__ == '__main__':
+    main()

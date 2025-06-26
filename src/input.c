@@ -187,7 +187,6 @@ int editor_read_key(struct EditorConfig *conf) {
 
                 // Ensure null-terminated string for sscanf
                 seq[2 + len] = '\0';
-
                 // Use sscanf to extract button, x, y, and the event type
                 // character (M or m)
 
@@ -196,21 +195,21 @@ int editor_read_key(struct EditorConfig *conf) {
 
                 if (sscanf(&seq[2], "%d;%d;%d%c", &button, &rx, &cy,
                            &event_type) == 4) {
+                    if (conf->numrows == 0) return EMPTY_BUFFER;
                     // we will just handle press button
                     if (event_type == 'M') {
                         // we need to account for one indexed cursor positions
                         rx -= 2;
                         cy--;
 
-                        if (cy > conf->numrows + conf->rowoff)
-                            cy = conf->numrows + conf->rowoff;
-                        if (cy == conf->numrows + conf->rowoff)
-                            return CURSOR_PRESS;
+                        if (cy >= conf->numrows + conf->rowoff)
+                            cy = conf->numrows + conf->rowoff - 1;
 
                         struct Row *row = &conf->rows[cy];
                         int numline_offset = editor_row_numline_calculate(row);
 
-                        if (rx > row->rsize + numline_offset + conf->coloff) {
+                        if (rx >
+                            (int)row->rsize + numline_offset + conf->coloff) {
                             rx = row->rsize + numline_offset + conf->coloff;
                         }
 
@@ -316,6 +315,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
     switch (c) {
         case CURSOR_PRESS:
         case CURSOR_RELEASE:
+        case EMPTY_BUFFER:
             break;
         case INTERRUPT_ENCOUNTERED:
             conf->resize_needed = 0;
@@ -502,6 +502,7 @@ int editor_insert_newline(struct EditorConfig *conf) {
             check_is_in_brackets(current_row->chars, current_row->size,
                                  conf->cx - numline_prefix_width);
 
+        // cursor inside {} basically
         if (is_compound_block && cursor_inside_brackets) {
             char *bracket_remainder_start = strstr(current_row->chars, "}");
             size_t bracket_pos = bracket_remainder_start - current_row->chars;
@@ -542,7 +543,6 @@ int editor_insert_newline(struct EditorConfig *conf) {
         } else {
             char *newline;
             size_t newline_len;
-
             editor_row_indent(conf, current_row, &newline, &newline_len);
             new_indent = count_first_tabs(newline, newline_len);
 
@@ -552,6 +552,9 @@ int editor_insert_newline(struct EditorConfig *conf) {
 
             current_row = &conf->rows[conf->cy];
             current_row->size = conf->cx - numline_prefix_width;
+
+            current_row->chars =
+                realloc(current_row->chars, current_row->size + 1);
             current_row->chars[current_row->size] = '\0';
             editor_update_row(conf, current_row);
         }

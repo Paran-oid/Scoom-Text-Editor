@@ -62,13 +62,13 @@ int editor_run(struct EditorConfig* conf) {
     conf_create(conf);
     term_create(conf);
 
-#ifdef DEBUG
-    if (editor_open(conf, "test.c") != SUCCESS) {
-        conf_destroy(conf);
-        return FILE_OPEN_FAILED;
-    }
+    // #ifdef DEBUG
+    //     if (editor_open(conf, "test.c") != SUCCESS) {
+    //         conf_destroy(conf);
+    //         return FILE_OPEN_FAILED;
+    //     }
 
-#endif
+    // #endif
 
     editor_set_status_message(
         conf, "HELP: CTRL-S = save | CTRL-Q = Quit | CTRL-F = Find");

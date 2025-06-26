@@ -9,7 +9,6 @@
 int main(int argc, char* argv[]) {
     struct EditorConfig* conf = malloc(sizeof(struct EditorConfig));
     if (!conf) return OUT_OF_MEMORY;
-
     if (argc >= 2) {
         if (editor_open(conf, argv[1]) != SUCCESS) {
             conf_destroy(conf);
