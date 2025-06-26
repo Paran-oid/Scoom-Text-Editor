@@ -22,7 +22,7 @@ static int app_cmp(const void* str1, const void* str2) {
 }
 
 int conf_create(struct EditorConfig* conf) {
-    conf->filename = NULL;
+    conf->filepath = NULL;
 
     // status message section
     conf->status_msg[0] = '\0';
@@ -94,7 +94,7 @@ int conf_destroy_rows(struct EditorConfig* conf) {
 }
 
 int conf_destroy(struct EditorConfig* conf) {
-    if (conf->filename) free(conf->filename);
+    if (conf->filepath) free(conf->filepath);
 
     conf_destroy_rows(conf);
 

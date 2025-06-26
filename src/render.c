@@ -135,7 +135,7 @@ int editor_draw_statusbar(struct EditorConfig *conf, struct ABuf *ab) {
     char status[80], rstatus[80];
     int status_len =
         snprintf(status, sizeof(status), "%.20s - %d lines %s",
-                 conf->filename ? conf->filename : "[No Name]", conf->numrows,
+                 conf->filepath ? conf->filepath : "[No Name]", conf->numrows,
                  conf->is_dirty ? "(modified)" : "");
 
     int rstatus_len = snprintf(rstatus, sizeof(rstatus), "%s | %d/%d",

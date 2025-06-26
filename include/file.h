@@ -32,5 +32,6 @@ int editor_paste(struct EditorConfig* conf);
 int editor_cut(struct EditorConfig* conf);
 
 int editor_find(struct EditorConfig* conf);
+int editor_extract_filename(struct EditorConfig* conf, char** filename);
 
 #endif

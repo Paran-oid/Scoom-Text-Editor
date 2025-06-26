@@ -7,6 +7,7 @@
 
 #include "config.h"
 #include "core.h"
+#include "file.h"
 #include "rows.h"
 
 #define HL_HIGHLIGHT_NUMBERS (1 << 0)
@@ -62,9 +63,11 @@ int editor_syntax_highlight_select(struct EditorConfig* conf) {
     */
 
     conf->syntax = NULL;
-    if (conf->filename == NULL) return FILE_NOT_FOUND;
+    if (conf->filepath == NULL) return FILE_NOT_FOUND;
 
-    char* ext = strstr(conf->filename, ".");
+    char* filename;
+    editor_extract_filename(conf, &filename);
+    const char* ext = strrchr(filename, '.');
 
     for (size_t i = 0; i < HLDB_ENTRIES; i++) {
         struct EditorSyntax* hl_entity = &HLDB[i];
@@ -72,7 +75,7 @@ int editor_syntax_highlight_select(struct EditorConfig* conf) {
         while (hl_entity->filematch[j]) {
             bool is_ext = hl_entity->filematch[j][0] == '.';
             if ((is_ext && ext && !strcmp(hl_entity->filematch[j], ext)) ||
-                (!is_ext && !strcmp(hl_entity->filematch[j], conf->filename))) {
+                (!is_ext && !strcmp(hl_entity->filematch[j], conf->filepath))) {
                 conf->syntax = hl_entity;
 
                 for (int filerow = 0; filerow < conf->numrows; filerow++) {

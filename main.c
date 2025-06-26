@@ -17,10 +17,9 @@ int main(int argc, char* argv[]) {
     }
 
     editor_run(conf);
-
     editor_destroy(conf);
     free(conf);
     g_conf = NULL;
 
-    return SUCCESS;
+    exit(SUCCESS);
 }

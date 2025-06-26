@@ -30,9 +30,9 @@ int snapshot_destroy(struct Snapshot* snapshot) {
 }
 
 int editor_open(struct EditorConfig* conf, const char* path) {
-    free(conf->filename);
-    conf->filename = strdup(path);
-    if (!conf->filename) return OUT_OF_MEMORY;
+    free(conf->filepath);
+    conf->filepath = strdup(path);
+    if (!conf->filepath) return OUT_OF_MEMORY;
 
     editor_syntax_highlight_select(conf);
 
@@ -57,18 +57,17 @@ int editor_open(struct EditorConfig* conf, const char* path) {
 
     return SUCCESS;
 }
-
 int editor_run(struct EditorConfig* conf) {
     conf_create(conf);
     term_create(conf);
 
-    // #ifdef DEBUG
-    //     if (editor_open(conf, "test.c") != SUCCESS) {
-    //         conf_destroy(conf);
-    //         return FILE_OPEN_FAILED;
-    //     }
+#ifdef DEBUG
+    if (editor_open(conf, "test.c") != SUCCESS) {
+        conf_destroy(conf);
+        return FILE_OPEN_FAILED;
+    }
 
-    // #endif
+#endif
 
     editor_set_status_message(
         conf, "HELP: CTRL-S = save | CTRL-Q = Quit | CTRL-F = Find");
@@ -85,15 +84,30 @@ int editor_run(struct EditorConfig* conf) {
     return SUCCESS;
 }
 
+int editor_extract_filename(struct EditorConfig* conf, char** filename) {
+    if (!conf->filepath) return ERROR;
+    char* file;
+    int count_slash = count_char(conf->filepath, strlen(conf->filepath), '/');
+    if (count_slash) {
+        file = strrchr(conf->filepath, '/');
+    } else {
+        file = conf->filepath;
+    }
+
+    *filename = file;
+
+    return SUCCESS;
+}
+
 int editor_destroy(struct EditorConfig* conf) {
     conf_destroy(conf);
     return SUCCESS;
 }
 
 int editor_save(struct EditorConfig* conf) {
-    if (!conf->filename) {
-        conf->filename = editor_prompt(conf, "Save as: %s", NULL);
-        if (!conf->filename) {
+    if (!conf->filepath) {
+        conf->filepath = editor_prompt(conf, "Save as: %s", NULL);
+        if (!conf->filepath) {
             editor_set_status_message(conf, "Save aborted...");
             return 1;
         }
@@ -105,7 +119,7 @@ int editor_save(struct EditorConfig* conf) {
     size_t file_data_size;
 
     editor_rows_to_string(conf, &file_data, &file_data_size);
-    int fd = open(conf->filename, O_CREAT | O_WRONLY, 0644);
+    int fd = open(conf->filepath, O_CREAT | O_WRONLY, 0644);
 
     if (!fd) return -1;
     // update size of file to one inserted

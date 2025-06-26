@@ -16,7 +16,7 @@ struct DList;
 
 struct EditorConfig {
     // Pointers (8 bytes each on 64-bit)
-    char* filename;
+    char* filepath;
     struct Row* rows;
     struct EditorSyntax* syntax;
     Stack* stack_undo;
