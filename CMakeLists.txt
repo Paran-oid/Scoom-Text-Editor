@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10.0)
-project(SCOOM VERSION 0.1.0 LANGUAGES C)
+project(SCOOM VERSION 0.1.5 LANGUAGES C)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -fsanitize=address -fsanitize=undefined -fstack-protector -g -fno-omit-frame-pointer -O2 -D_FORTIFY_SOURCE=2")
 

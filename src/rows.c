@@ -40,6 +40,10 @@ int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
 
     memmove(&row->chars[at], &row->chars[at + 1], row->size - at - 1);
     row->size--;
+
+    row->chars = realloc(row->chars, row->size + 1);
+    row->chars[row->size] = '\0';
+
     editor_update_row(conf, row);
     conf->is_dirty = 1;
 
@@ -88,6 +92,7 @@ int editor_update_row(struct EditorConfig* conf, struct Row* row) {
     int tabs = 0;
     size_t n = 0;
     for (size_t j = 0; j < row->size; j++) {
+        // TODO: once it finds a char and not tab leave this
         // TODO: make user able to choose between tab and spaces
         if (row->chars[j] == '\t') {
             tabs++;
@@ -153,6 +158,8 @@ int editor_insert_char(struct EditorConfig* conf, int c) {
 }
 
 int editor_delete_char(struct EditorConfig* conf) {
+    if (conf->numrows == 0) return EMPTY_BUFFER;
+
     int numline_offset_size =
         editor_row_numline_calculate(&conf->rows[conf->cy]);
 
@@ -191,8 +198,11 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
                           size_t* result_size) {
     size_t total_size = 0;
     for (size_t i = 0; i < (size_t)conf->numrows; i++) {
-        total_size += conf->rows[i].size + 1;
+        if (conf->rows[i].size) total_size += conf->rows[i].size + 1;
     }
+
+    if (total_size == 0) return EMPTY_BUFFER;
+
     *result_size = total_size + 1;
     char* file_data = malloc(*result_size);
     if (!file_data) return -1;

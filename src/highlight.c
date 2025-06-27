@@ -148,7 +148,7 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
         if (conf->syntax->flags & HL_HIGHLIGHT_STRINGS) {
             if (in_string) {
                 row->hl[i] = HL_STRING;
-                if (c == '\\' && i < row->size) {
+                if (c == '\\' && i + 1 < row->size) {
                     row->hl[i + 1] = HL_STRING;
                     i += 2;
                     continue;

@@ -25,7 +25,7 @@ int snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
 }
 
 int snapshot_destroy(struct Snapshot* snapshot) {
-    free(snapshot->text);
+    if (snapshot->text) free(snapshot->text);
     return SUCCESS;
 }
 
@@ -37,7 +37,15 @@ int editor_open(struct EditorConfig* conf, const char* path) {
     editor_syntax_highlight_select(conf);
 
     FILE* fp = fopen(path, "r");
-    if (!fp) die("fopen");
+    if (!fp) {
+        // create the file if it doesn't exist
+
+        fp = fopen(path, "w");
+        if (!fp) die("fopen");
+
+        conf->is_dirty = 0;
+        return SUCCESS;
+    };
 
     char* line = NULL;
     size_t line_cap = 0;  // size of buf basically
@@ -119,6 +127,7 @@ int editor_save(struct EditorConfig* conf) {
     size_t file_data_size;
 
     editor_rows_to_string(conf, &file_data, &file_data_size);
+
     int fd = open(conf->filepath, O_CREAT | O_WRONLY, 0644);
 
     if (!fd) return -1;
@@ -127,7 +136,12 @@ int editor_save(struct EditorConfig* conf) {
     if ((size_t)write(fd, file_data, file_data_size) != file_data_size)
         return 1;
 
-    editor_set_status_message(conf, "%d bytes written to disk", file_data_size);
+    if (file_data_size) {
+        editor_set_status_message(conf, "%d bytes written to disk",
+                                  file_data_size);
+    } else {
+        editor_set_status_message(conf, "saved empty file", file_data_size);
+    }
 
     conf->is_dirty = 0;
     close(fd);
@@ -190,6 +204,7 @@ int editor_copy(struct EditorConfig* conf) {
     return SUCCESS;
 }
 
+// TODO: make it work for multiple lines
 int editor_paste(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
     if (!pipe) return 1;

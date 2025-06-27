@@ -313,6 +313,18 @@ int editor_process_key_press(struct EditorConfig *conf) {
     double time_elapsed = difftime(current_time, conf->last_time_modified);
 
     switch (c) {
+        case F1:
+        case F2:
+        case F3:
+        case F4:
+        case F5:
+        case F6:
+        case F7:
+        case F8:
+        case F9:
+        case F10:
+        case F11:
+        case F12:
         case CURSOR_PRESS:
         case CURSOR_RELEASE:
         case EMPTY_BUFFER:
@@ -394,7 +406,6 @@ int editor_process_key_press(struct EditorConfig *conf) {
                 snapshot_create(conf, s);
                 stack_push(conf->stack_undo, s);
             }
-
             editor_delete_char(conf);
             conf->last_time_modified = current_time;
             break;
