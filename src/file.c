@@ -203,22 +203,30 @@ int editor_copy(struct EditorConfig* conf) {
     pclose(pipe);
     return SUCCESS;
 }
-
-// TODO: make it work for multiple lines
+// TODO: make it cross platform maybe
 int editor_paste(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
-    if (!pipe) return 1;
+    if (!pipe) return ERROR;
 
-    char* content_pasted;
+    char** buffer_content = NULL;
+    size_t n = 0;
+
+    char* content_pasted = NULL;
     size_t size = 0;
-    ssize_t len = getline(&content_pasted, &size, pipe);
+    ssize_t len = 0;
 
-    if (len == -1) {
-        free(content_pasted);
-        return 2;
+    while ((len = getline(&content_pasted, &size, pipe)) != -1) {
+        buffer_content = realloc(buffer_content, sizeof(char*) * (n + 1));
+        buffer_content[n] = strdup(content_pasted);
+        n++;
+        // TODO: handle failure and free all allocated memory
     }
 
     pclose(pipe);
+
+    if (n == 1 && len == -1 && *content_pasted == '\0') {
+        return EMPTY_COPY_BUFFER;
+    }
 
     if (conf->cy == conf->numrows) {
         editor_insert_row(conf, conf->cy, "", 0);

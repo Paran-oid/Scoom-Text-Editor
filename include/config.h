@@ -70,6 +70,7 @@ enum EditorStatus {
     CURSOR_OUT_OF_BOUNDS,
     CURSOR_RELEASE,
     EMPTY_BUFFER,
+    EMPTY_COPY_BUFFER,
     UNSUPPORTED_OPERATION,
 
     // Stack or undo/redo issues
