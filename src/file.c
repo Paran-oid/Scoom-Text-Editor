@@ -211,6 +211,7 @@ int editor_paste(struct EditorConfig* conf) {
     char** buffer_content = NULL;
     size_t n = 0;
 
+    // TODO: make it paste multiple lines
     char* content_pasted = NULL;
     size_t size = 0;
     ssize_t len = 0;
