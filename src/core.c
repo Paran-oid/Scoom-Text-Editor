@@ -33,7 +33,7 @@ bool check_seperator(unsigned char c) {
     return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != NULL;
 }
 
-bool check_compound_statement(char* str, size_t len) {
+bool check_compound_statement(const char* str, size_t len) {
     if (count_char(str, len, '{') == 0 && count_char(str, len, '}') == 0) {
         return false;
     }
@@ -75,7 +75,7 @@ bool check_compound_statement(char* str, size_t len) {
     return isempty;
 }
 
-bool check_is_in_brackets(char* str, size_t len, int cx) {
+bool check_is_in_brackets(const char* str, size_t len, int cx) {
     int brackets = 0;
     bool in_string = false;
 
@@ -114,7 +114,7 @@ inline bool check_is_paranthesis(char c) {
 
 /* Counting */
 
-int count_char(char* str, size_t size, char c) {
+int count_char(const char* str, const size_t size, char c) {
     int total = 0;
     for (size_t i = 0; i < size; i++) {
         if (str[i] == c) total++;
@@ -134,7 +134,7 @@ int count_digits(int n) {
 }
 
 // this function basically calculates "indentations"
-int count_first_tabs(char* s, size_t len) {
+int count_first_tabs(const char* s, size_t len) {
     int count = 0;
     for (size_t i = 0; i < len; i++) {
         if (s[i] == '\t')
@@ -146,7 +146,7 @@ int count_first_tabs(char* s, size_t len) {
 }
 
 // same functionality as above just with spaces
-int count_first_spaces(char* s, size_t len) {
+int count_first_spaces(const char* s, size_t len) {
     int count = 0;
     for (size_t i = 0; i < len; i++) {
         if (s[i] == ' ')

@@ -28,7 +28,7 @@ struct EditorSyntax {
 };
 
 int editor_syntax_highlight_select(struct EditorConfig* conf);
-int editor_syntax_to_color_row(enum EditorHighlight row);
+int editor_syntax_to_color_row(const enum EditorHighlight row);
 int editor_update_syntax(struct EditorConfig* conf, struct Row* row);
 
 #endif

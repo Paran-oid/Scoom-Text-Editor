@@ -44,7 +44,7 @@ int editor_set_status_message(struct EditorConfig *conf, const char *message,
 char *editor_prompt(struct EditorConfig *conf, const char *prompt,
                     void (*callback)(struct EditorConfig *, char *, int));
 
-int editor_cursor_cursor(struct EditorConfig *conf, enum EditorKey key);
+int editor_ctrl_(struct EditorConfig *conf, const enum EditorKey key);
 int editor_cursor_move(struct EditorConfig *conf, int key);
 
 int editor_read_key(struct EditorConfig *conf);

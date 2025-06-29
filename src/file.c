@@ -112,6 +112,7 @@ int editor_destroy(struct EditorConfig* conf) {
     return SUCCESS;
 }
 
+// TODO: generates weird character at end of file each time TO FIX
 int editor_save(struct EditorConfig* conf) {
     if (!conf->filepath) {
         conf->filepath = editor_prompt(conf, "Save as: %s", NULL);
@@ -203,6 +204,81 @@ int editor_copy(struct EditorConfig* conf) {
     pclose(pipe);
     return SUCCESS;
 }
+
+// TODO: handle edge case of empty file
+// TODO: document this very important
+static size_t editor_paste_buffer(struct EditorConfig* conf,
+                                  char** buffer_content, size_t n) {
+    if (n == 0) {
+        return -1;
+    }
+
+    /*
+            We do -1 for all buffer_content char* because it has \n at end
+    */
+
+    size_t total_size = 0;
+
+    struct Row* row = &conf->rows[conf->cy];
+    int numline_size = editor_row_numline_calculate(row);
+    int cursor_offset = conf->cx - numline_size;
+
+    char* first_buffer_content = buffer_content[0];
+    size_t first_buffer_size = strlen(first_buffer_content) - 1;
+
+    char* str_append = malloc(cursor_offset + first_buffer_size + 1);
+    char* str_remaining = strdup(row->chars + cursor_offset);
+    size_t str_remaining_size = strlen(str_remaining);
+
+    if (!str_remaining) {
+        free(str_append);
+        return -1;  // TODO: make this an enum type
+    }
+
+    memcpy(str_append, row->chars, cursor_offset);
+    memcpy(str_append + cursor_offset, first_buffer_content, first_buffer_size);
+    str_append[cursor_offset + first_buffer_size] = '\0';
+
+    total_size += first_buffer_size;
+
+    editor_delete_row(conf, conf->cy);
+    editor_insert_row(conf, conf->cy, str_append,
+                      first_buffer_size + cursor_offset);
+
+    // add each independent buffer_row if in [1, n - 2]
+    if (n > 1) {
+        for (size_t i = 1; i < n - 2; i++) {
+            conf->cy++;
+            editor_insert_row(conf, conf->cy, buffer_content[i],
+                              strlen(buffer_content[i]));
+            total_size += strlen(buffer_content[i]);
+        }
+    }
+
+    // append remaining
+    row = &conf->rows[conf->cy];
+    char* last_buffer_content = buffer_content[n - 1];
+    size_t last_row_size = strlen(last_buffer_content);
+
+    // TODO: instead of manually appending, make a function in core.h/.c for it!
+    char* last_modified_row = malloc(last_row_size + str_remaining_size + 1);
+    memcpy(last_modified_row, last_row, last_row_size);
+    memcpy(last_modified_row + last_row_size, str_remaining,
+           str_remaining_size);
+    last_modified_row[last_row_size + str_remaining_size] = '\0';
+
+    editor_insert_row(conf, conf->cy, last_modified_row,
+                      strlen(last_modified_row));
+
+    total_size += strlen(last_row);
+    conf->cx = last_row_size;
+
+    free(last_modified_row);
+    free(str_append);
+    free(str_remaining);
+    return total_size;
+}
+
 // TODO: make it cross platform maybe
 int editor_paste(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
@@ -211,7 +287,6 @@ int editor_paste(struct EditorConfig* conf) {
     char** buffer_content = NULL;
     size_t n = 0;
 
-    // TODO: make it paste multiple lines
     char* content_pasted = NULL;
     size_t size = 0;
     ssize_t len = 0;
@@ -219,8 +294,13 @@ int editor_paste(struct EditorConfig* conf) {
     while ((len = getline(&content_pasted, &size, pipe)) != -1) {
         buffer_content = realloc(buffer_content, sizeof(char*) * (n + 1));
         buffer_content[n] = strdup(content_pasted);
+        if (!buffer_content || !buffer_content[n]) {
+            for (size_t i = 0; i < n; i++) {
+                free(buffer_content[i]);
+            }
+            free(buffer_content);
+        }
         n++;
-        // TODO: handle failure and free all allocated memory
     }
 
     pclose(pipe);
@@ -229,31 +309,25 @@ int editor_paste(struct EditorConfig* conf) {
         return EMPTY_COPY_BUFFER;
     }
 
+    /*
+The code compiled without errors
+The code compiled without errors.
+The code compiled without errors.
+The code compiled without errors.
+     */
+
     if (conf->cy == conf->numrows) {
         editor_insert_row(conf, conf->cy, "", 0);
     }
-    struct Row* row = &conf->rows[conf->cy];
-    char* new_chars = malloc(row->size + len + 1);
-    int numline_size = editor_row_numline_calculate(row);
 
-    int before = conf->cx - numline_size;
+    size_t total_bytes_pasted = editor_paste_buffer(conf, buffer_content, n);
 
-    strncpy(new_chars, row->chars, before);            // copy before cursor
-    strncpy(new_chars + before, content_pasted, len);  // copy content pasted
-    strncpy(new_chars + before + len, row->chars + before,
-            row->size - before);  // copy rest of the string
-    new_chars[row->size + len] = '\0';
-
-    free(row->chars);
-    row->chars = new_chars;
-    row->size = row->size + len;
-    editor_update_row(conf, row);
-    conf->is_dirty = 1;
-
-    editor_set_status_message(conf, "pasted %d bytes into buffer",
-                              row->size + len + 1);
-
-    conf->cx += len;
+    if (total_bytes_pasted > -1) {
+        editor_set_status_message(conf, "pasted %d bytes into buffer",
+                                  total_bytes_pasted);
+    } else {
+        editor_set_status_message(conf, "error encountered while pasting...");
+    }
 
     free(content_pasted);
 

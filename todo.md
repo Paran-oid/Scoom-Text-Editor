@@ -2,8 +2,8 @@
 
 ## main section
 
-- Handle edge cases (ask **CHATGPT**)
-- Make sure some parameters that were not modified to be const.
+- Implement paste correctly
+- Implement text selection
 - Add more error handling.
 - Document my code.
 - Add python syntax and other languages maybe.
