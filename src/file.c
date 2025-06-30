@@ -207,75 +207,99 @@ int editor_copy(struct EditorConfig* conf) {
 
 // TODO: handle edge case of empty file
 // TODO: document this very important
-static size_t editor_paste_buffer(struct EditorConfig* conf,
-                                  char** buffer_content, size_t n) {
-    if (n == 0) {
+static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
+                               size_t copy_buffer_size) {
+    /*
+    Function is based on this logic:
+        - step 1: text
+        - step 2: te(cursor)xt
+        - step 3: te + copy_buffer[0]
+        - step 4: copy_buffer[1]
+                          copy_buffer[2]
+                          ...
+                          copy_buffer[n - 2]
+        - step 5: copy_buffer[n - 1] + xt
+        */
+
+    // Step 1 and 2 were already done, we need to just care about the rest
+    // We decrement by -1 for each copy_buffer element because each has \n.
+
+    if (copy_buffer_size == 0) {
         return -1;
     }
 
-    /*
-            We do -1 for all buffer_content char* because it has \n at end
-    */
-
     size_t total_size = 0;
+
+    // Step 3:
 
     struct Row* row = &conf->rows[conf->cy];
     int numline_size = editor_row_numline_calculate(row);
     int cursor_offset = conf->cx - numline_size;
 
-    char* first_buffer_content = buffer_content[0];
-    size_t first_buffer_size = strlen(first_buffer_content) - 1;
+    char* first_copy_buffer = copy_buffer[0];
+    size_t first_buffer_size = strlen(first_copy_buffer);
 
-    char* str_append = malloc(cursor_offset + first_buffer_size + 1);
+    if (strchr(first_copy_buffer, '\n')) first_buffer_size--;
+
+    char* str_appended = malloc(cursor_offset + first_buffer_size + 1);
     char* str_remaining = strdup(row->chars + cursor_offset);
     size_t str_remaining_size = strlen(str_remaining);
 
     if (!str_remaining) {
-        free(str_append);
+        free(str_appended);
         return -1;  // TODO: make this an enum type
     }
-
-    memcpy(str_append, row->chars, cursor_offset);
-    memcpy(str_append + cursor_offset, first_buffer_content, first_buffer_size);
-    str_append[cursor_offset + first_buffer_size] = '\0';
+    memcpy(str_appended, row->chars, cursor_offset);
+    memcpy(str_appended + cursor_offset, first_copy_buffer, first_buffer_size);
+    str_appended[cursor_offset + first_buffer_size] = '\0';
 
     total_size += first_buffer_size;
 
-    editor_delete_row(conf, conf->cy);
-    editor_insert_row(conf, conf->cy, str_append,
-                      first_buffer_size + cursor_offset);
-
-    // add each independent buffer_row if in [1, n - 2]
-    if (n > 1) {
-        for (size_t i = 1; i < n - 2; i++) {
-            conf->cy++;
-            editor_insert_row(conf, conf->cy, buffer_content[i],
-                              strlen(buffer_content[i]));
-            total_size += strlen(buffer_content[i]);
+    if (copy_buffer_size == 1) {
+        // go straight to step 5 and just append remaining string
+        str_append(&str_appended, str_remaining);
+        editor_delete_row(conf, conf->cy);
+        editor_insert_row(
+            conf, conf->cy, str_appended,
+            first_buffer_size + cursor_offset + str_remaining_size);
+    } else {
+        // add previous row
+        editor_delete_row(conf, conf->cy);
+        editor_insert_row(conf, conf->cy, str_appended,
+                          first_buffer_size + cursor_offset);
+        // Step 4:
+        if (copy_buffer_size > 1) {
+            for (size_t i = 1; i < copy_buffer_size - 1; i++) {
+                conf->cy++;
+                editor_insert_row(conf, conf->cy, copy_buffer[i],
+                                  strlen(copy_buffer[i]) - 1);
+                total_size += strlen(copy_buffer[i]) - 1;
+            }
         }
+
+        // Step 5:
+        conf->cy++;
+
+        row = &conf->rows[conf->cy];
+        char* last_copy_buffer = copy_buffer[copy_buffer_size - 1];
+        size_t last_row_size = strlen(last_copy_buffer) - 1;
+        last_copy_buffer[last_row_size] = '\0';  // replace \n with \0
+
+        char* last_modified_row = strdup(last_copy_buffer);
+        str_append(&last_modified_row, str_remaining);
+
+        editor_insert_row(conf, conf->cy, last_modified_row,
+                          last_row_size + str_remaining_size);
+
+        numline_size = editor_row_numline_calculate(&conf->rows[conf->cy]);
+        total_size += strlen(last_modified_row);
+        conf->cx = last_row_size + numline_size;
+        free(last_modified_row);
+
+        free(str_appended);
+        free(str_remaining);
     }
 
-    // append remaining
-    row = &conf->rows[conf->cy];
-    char* last_buffer_content = buffer_content[n - 1];
-    size_t last_row_size = strlen(last_buffer_content);
-
-    // TODO: instead of manually appending, make a function in core.h/.c for it!
-    char* last_modified_row = malloc(last_row_size + str_remaining_size + 1);
-    memcpy(last_modified_row, last_row, last_row_size);
-    memcpy(last_modified_row + last_row_size, str_remaining,
-           str_remaining_size);
-    last_modified_row[last_row_size + str_remaining_size] = '\0';
-
-    editor_insert_row(conf, conf->cy, last_modified_row,
-                      strlen(last_modified_row));
-
-    total_size += strlen(last_row);
-    conf->cx = last_row_size;
-
-    free(last_modified_row);
-    free(str_append);
-    free(str_remaining);
     return total_size;
 }
 
@@ -284,43 +308,35 @@ int editor_paste(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
     if (!pipe) return ERROR;
 
-    char** buffer_content = NULL;
-    size_t n = 0;
+    char** copy_buffer = NULL;
+    size_t copy_buffer_size = 0;
 
     char* content_pasted = NULL;
     size_t size = 0;
     ssize_t len = 0;
-
     while ((len = getline(&content_pasted, &size, pipe)) != -1) {
-        buffer_content = realloc(buffer_content, sizeof(char*) * (n + 1));
-        buffer_content[n] = strdup(content_pasted);
-        if (!buffer_content || !buffer_content[n]) {
-            for (size_t i = 0; i < n; i++) {
-                free(buffer_content[i]);
+        copy_buffer =
+            realloc(copy_buffer, sizeof(char*) * (copy_buffer_size + 1));
+        copy_buffer[copy_buffer_size] = strdup(content_pasted);
+        if (!copy_buffer || !copy_buffer[copy_buffer_size]) {
+            for (size_t i = 0; i < copy_buffer_size; i++) {
+                free(copy_buffer[i]);
             }
-            free(buffer_content);
+            free(copy_buffer);
         }
-        n++;
+        copy_buffer_size++;
     }
 
     pclose(pipe);
 
-    if (n == 1 && len == -1 && *content_pasted == '\0') {
+    if (copy_buffer_size == 1 && len == -1 && *content_pasted == '\0') {
         return EMPTY_COPY_BUFFER;
     }
-
-    /*
-The code compiled without errors
-The code compiled without errors.
-The code compiled without errors.
-The code compiled without errors.
-     */
-
     if (conf->cy == conf->numrows) {
         editor_insert_row(conf, conf->cy, "", 0);
     }
-
-    size_t total_bytes_pasted = editor_paste_buffer(conf, buffer_content, n);
+    int total_bytes_pasted =
+        editor_paste_buffer(conf, copy_buffer, copy_buffer_size);
 
     if (total_bytes_pasted > -1) {
         editor_set_status_message(conf, "pasted %d bytes into buffer",
@@ -329,6 +345,11 @@ The code compiled without errors.
         editor_set_status_message(conf, "error encountered while pasting...");
     }
 
+    for (size_t i = 0; i < copy_buffer_size; i++) {
+        free(copy_buffer[i]);
+    }
+
+    free(copy_buffer);
     free(content_pasted);
 
     return SUCCESS;

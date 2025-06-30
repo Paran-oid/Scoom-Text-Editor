@@ -1,6 +1,6 @@
 .cache
 .vscode
-out
+build
 backup
 
 CMakePresets.json

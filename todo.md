@@ -2,8 +2,8 @@
 
 ## main section
 
-- Implement paste correctly
 - Implement text selection
+- Make functions shorter (60 lines max)
 - Add more error handling.
 - Document my code.
 - Add python syntax and other languages maybe.

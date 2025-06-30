@@ -27,6 +27,50 @@ char closing_paren(char c) {
     }
 }
 
+/* String and Char operations*/
+int str_append(char** dest, const char* src) {
+    // TODO: make an enum error for null parameters passed
+    if (!dest || !src) {
+        return ERROR;
+    }
+
+    size_t dest_len = strlen(*dest);
+    size_t src_len = strlen(src);
+
+    char* result = malloc(src_len + dest_len + 1);
+    if (!result) return OUT_OF_MEMORY;
+
+    memcpy(result, *dest, dest_len);
+    memcpy(result + dest_len, src, src_len);
+    result[dest_len + src_len] = '\0';
+
+    free(*dest);
+    *dest = result;
+
+    return SUCCESS;
+}
+int str_prepend(char** dest, const char* src) {
+    // TODO: make an enum error for null parameters passed
+    if (!dest || !src) {
+        return ERROR;
+    }
+
+    size_t dest_len = strlen(*dest);
+    size_t src_len = strlen(src);
+
+    char* result = malloc(src_len + dest_len + 1);
+    if (!result) return OUT_OF_MEMORY;
+
+    memcpy(result, src, src_len);
+    memcpy(result + src_len, *dest, dest_len);
+    result[dest_len + src_len] = '\0';
+
+    free(*dest);
+    *dest = result;
+
+    return SUCCESS;
+}
+
 /* Checking */
 
 bool check_seperator(unsigned char c) {
