@@ -1,5 +1,6 @@
 #include "rows.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -198,13 +199,18 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
                           size_t* result_size) {
     size_t total_size = 0;
     for (size_t i = 0; i < (size_t)conf->numrows; i++) {
-        if (conf->rows[i].size) total_size += conf->rows[i].size + 1;
+        total_size += conf->rows[i].size;
+
+        if (conf->rows[i].size == 0 ||
+            conf->rows[i].chars[conf->rows[i].size - 1] != '\n') {
+            total_size += 1;
+        }
     }
 
     if (total_size == 0) return EMPTY_BUFFER;
 
-    *result_size = total_size + 1;
-    char* file_data = malloc(*result_size);
+    *result_size = total_size;
+    char* file_data = malloc(total_size + 1);
     if (!file_data) return -1;
 
     char* curr_ptr = file_data;
@@ -212,8 +218,13 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
     for (size_t i = 0; i < (size_t)conf->numrows; i++) {
         memcpy(curr_ptr, conf->rows[i].chars, conf->rows[i].size);
         curr_ptr += conf->rows[i].size;
-        *curr_ptr = '\n';
-        curr_ptr++;
+
+        // Add newline if not present at end of row
+        if (conf->rows[i].size == 0 ||
+            conf->rows[i].chars[conf->rows[i].size - 1] != '\n') {
+            *curr_ptr = '\n';
+            curr_ptr++;
+        }
     }
 
     *curr_ptr = '\0';
@@ -223,42 +234,29 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
 }
 
 int editor_string_to_rows(struct EditorConfig* conf, char* buffer) {
-    // reset all rows in conf
+    // delete all rows in conf->rows
     conf_destroy_rows(conf);
 
-    char* str = strdup(buffer);
-    size_t index = 0, capacity = 10;
-    conf->rows = calloc(sizeof(struct Row), capacity);
+    char* ptr = buffer;
+    size_t index = 0;
 
-    char* token = strtok(str, "\n");
+    while (*ptr) {
+        char* start = ptr;
 
-    while (token) {
-        if (index >= capacity) {
-            capacity *= 2;
-            conf->rows = realloc(conf->rows, sizeof(struct Row) * capacity);
-        }
+        while (*ptr != '\n' && *ptr != '\0') ptr++;
 
-        conf->rows[index].chars = strdup(token);
-        conf->rows[index].idx = index;
-        conf->rows[index].size = strlen(conf->rows[index].chars);
-        conf->rows[index].render = NULL;
-        conf->rows[index].rsize = 0;
-        conf->rows[index].hl = NULL;
-        conf->rows[index].hl_open_comment = false;
+        size_t len = ptr - start;
+        char* buf = malloc(len + 1);
+        memcpy(buf, start, len);
+        buf[len] = '\0';
 
-        conf->is_dirty = 1;
-        editor_update_row(conf, &conf->rows[index]);
+        editor_insert_row(conf, index++, buf, len);
+        free(buf);
 
-        token = strtok(NULL, "\n");
-        index++;
+        if (*ptr == '\n') ptr++;
     }
 
-    if (index < capacity) {
-        conf->rows = realloc(conf->rows, sizeof(struct Row) * index);
-    }
-
-    free(str);
-    conf->numrows = index - 1;
+    conf->numrows = index;
 
     return SUCCESS;
 }

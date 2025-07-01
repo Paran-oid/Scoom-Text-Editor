@@ -31,18 +31,19 @@ static void cleanup(void) {
                   &((struct EditorConfig*)g_conf)->orig_termios) == -1) {
         die("tcsetattr");
     }
-    // Show terminal scrollbar
-    if (write(STDOUT_FILENO, "\x1b[?1049l", 9) == -1) {
-        die("couldn't show terminal scrollbar");
-    }
+    // TODO: enable again
+    // // Show terminal scrollbar
+    // if (write(STDOUT_FILENO, "\x1b[?1049l", 9) == -1) {
+    //     die("couldn't show terminal scrollbar");
+    // }
 
-    if (write(STDOUT_FILENO, "\x1b[?1000l", 9) <= 0) {
-        die("couldn't disable mouse click");  // Disable mouse click
-                                              // tracking
-    }
-    if (write(STDOUT_FILENO, "\x1b[?1006l", 9) <= 0) {
-        die("couldn't disable SGR");  // Disable SGR mode
-    }
+    // if (write(STDOUT_FILENO, "\x1b[?1000l", 9) <= 0) {
+    //     die("couldn't disable mouse click");  // Disable mouse click
+    //                                           // tracking
+    // }
+    // if (write(STDOUT_FILENO, "\x1b[?1006l", 9) <= 0) {
+    //     die("couldn't disable SGR");  // Disable SGR mode
+    // }
 }
 
 void term_create(struct EditorConfig* conf) {
@@ -70,10 +71,11 @@ void term_create(struct EditorConfig* conf) {
     // return after 100 ms into output buffer
     conf->orig_termios.c_cc[VTIME] = 1;
 
-    // Hide terminal's scrollbar
-    if (write(STDOUT_FILENO, "\x1b[?1049h", 9) == -1) {
-        die("couldn't hide terminal's scrollbar");
-    }
+    // reenable these below me
+    // // Hide terminal's scrollbar
+    // if (write(STDOUT_FILENO, "\x1b[?1049h", 9) == -1) {
+    //     die("couldn't hide terminal's scrollbar");
+    // }
 
     // signal(interrupt) handling
     struct sigaction sa;
@@ -89,14 +91,13 @@ void term_create(struct EditorConfig* conf) {
     signal(SIGINT, term_exit);
     signal(SIGTERM, term_exit);
 
-    // TODO: make this function
-    if (write(STDOUT_FILENO, "\x1b[?1000h", 9) < 0) {
-        die("enabling mouse click error");
-    }  // Enable mouse click tracking
-    if (write(STDOUT_FILENO, "\x1b[?1006h", 9) < 0) {
-        die("enabling SGR mode error");
-    }  // Enable mouse click tracking
-    // Enable SGR (1006) mode for xterm
+    // if (write(STDOUT_FILENO, "\x1b[?1000h", 9) < 0) {
+    //     die("enabling mouse click error");
+    // }  // Enable mouse click tracking
+    // if (write(STDOUT_FILENO, "\x1b[?1006h", 9) < 0) {
+    //     die("enabling SGR mode error");
+    // }  // Enable mouse click tracking
+    // // Enable SGR (1006) mode for xterm
 
     // apply these settings for stdout
     if (tcsetattr(STDOUT_FILENO, TCSAFLUSH, &conf->orig_termios) == -1) {

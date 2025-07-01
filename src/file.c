@@ -112,7 +112,6 @@ int editor_destroy(struct EditorConfig* conf) {
     return SUCCESS;
 }
 
-// TODO: generates weird character at end of file each time TO FIX
 int editor_save(struct EditorConfig* conf) {
     if (!conf->filepath) {
         conf->filepath = editor_prompt(conf, "Save as: %s", NULL);
@@ -180,6 +179,7 @@ int editor_redo(struct EditorConfig* conf) {
 
     stack_pop(conf->stack_redo, (void**)&popped_snapshot);
     conf_to_snapshot_update(conf, popped_snapshot);
+    free(popped_snapshot);
 
     editor_set_status_message(conf, "redo success!");
 
@@ -304,6 +304,7 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
 }
 
 // TODO: make it cross platform maybe
+// TODO: problem with undoing after pasting
 int editor_paste(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
     if (!pipe) return ERROR;

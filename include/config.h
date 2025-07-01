@@ -51,6 +51,7 @@ enum EditorStatus {
     // General statuses
     SUCCESS = 0,
     ERROR,
+    NULL_PARAMETER,
     INVALID_ARG,
     OUT_OF_MEMORY,
     CURSOR_PRESS,

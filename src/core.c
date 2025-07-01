@@ -29,9 +29,8 @@ char closing_paren(char c) {
 
 /* String and Char operations*/
 int str_append(char** dest, const char* src) {
-    // TODO: make an enum error for null parameters passed
     if (!dest || !src) {
-        return ERROR;
+        return NULL_PARAMETER;
     }
 
     size_t dest_len = strlen(*dest);
@@ -50,9 +49,8 @@ int str_append(char** dest, const char* src) {
     return SUCCESS;
 }
 int str_prepend(char** dest, const char* src) {
-    // TODO: make an enum error for null parameters passed
     if (!dest || !src) {
-        return ERROR;
+        return NULL_PARAMETER;
     }
 
     size_t dest_len = strlen(*dest);

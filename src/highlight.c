@@ -91,6 +91,8 @@ int editor_syntax_highlight_select(struct EditorConfig* conf) {
 }
 
 int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
+    if (!row->chars) return NULL_PARAMETER;
+
     row->hl = realloc(row->hl, row->rsize);
     memset(row->hl, HL_NORMAL, row->rsize);
 
