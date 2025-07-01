@@ -11,6 +11,9 @@
 #include "config.h"
 #include "core.h"
 
+#define SCROLL_DISABLE 0
+#define MOUSE_REPORTING 0
+
 /*
         usage of each macro (BRKINT, ICRNL, INPCK, ...) can be understood in
         termios.h docs
@@ -31,19 +34,23 @@ static void cleanup(void) {
                   &((struct EditorConfig*)g_conf)->orig_termios) == -1) {
         die("tcsetattr");
     }
-    // TODO: enable again
-    // // Show terminal scrollbar
-    // if (write(STDOUT_FILENO, "\x1b[?1049l", 9) == -1) {
-    //     die("couldn't show terminal scrollbar");
-    // }
 
-    // if (write(STDOUT_FILENO, "\x1b[?1000l", 9) <= 0) {
-    //     die("couldn't disable mouse click");  // Disable mouse click
-    //                                           // tracking
-    // }
-    // if (write(STDOUT_FILENO, "\x1b[?1006l", 9) <= 0) {
-    //     die("couldn't disable SGR");  // Disable SGR mode
-    // }
+#if SCROLL_DISABLE
+    // Show terminal scrollbar
+    if (write(STDOUT_FILENO, "\x1b[?1049l", 9) == -1) {
+        die("couldn't show terminal scrollbar");
+    }
+#endif
+
+#if MOUSE_REPORTING
+    if (write(STDOUT_FILENO, "\x1b[?1000l", 9) <= 0) {
+        die("couldn't disable mouse click");  // Disable mouse click
+                                              // tracking
+    }
+    if (write(STDOUT_FILENO, "\x1b[?1006l", 9) <= 0) {
+        die("couldn't disable SGR");  // Disable SGR mode
+    }
+#endif
 }
 
 void term_create(struct EditorConfig* conf) {
@@ -71,11 +78,13 @@ void term_create(struct EditorConfig* conf) {
     // return after 100 ms into output buffer
     conf->orig_termios.c_cc[VTIME] = 1;
 
+#if SCROLL_DISABLE
     // reenable these below me
-    // // Hide terminal's scrollbar
-    // if (write(STDOUT_FILENO, "\x1b[?1049h", 9) == -1) {
-    //     die("couldn't hide terminal's scrollbar");
-    // }
+    // Hide terminal's scrollbar
+    if (write(STDOUT_FILENO, "\x1b[?1049h", 9) == -1) {
+        die("couldn't hide terminal's scrollbar");
+    }
+#endif
 
     // signal(interrupt) handling
     struct sigaction sa;
@@ -91,13 +100,16 @@ void term_create(struct EditorConfig* conf) {
     signal(SIGINT, term_exit);
     signal(SIGTERM, term_exit);
 
-    // if (write(STDOUT_FILENO, "\x1b[?1000h", 9) < 0) {
-    //     die("enabling mouse click error");
-    // }  // Enable mouse click tracking
-    // if (write(STDOUT_FILENO, "\x1b[?1006h", 9) < 0) {
-    //     die("enabling SGR mode error");
-    // }  // Enable mouse click tracking
-    // // Enable SGR (1006) mode for xterm
+#if MOUSE_REPORTING
+
+    if (write(STDOUT_FILENO, "\x1b[?1000h", 9) < 0) {
+        die("enabling mouse click error");
+    }  // Enable mouse click tracking
+    if (write(STDOUT_FILENO, "\x1b[?1006h", 9) < 0) {
+        die("enabling SGR mode error");
+    }  // Enable mouse click tracking
+    // Enable SGR (1006) mode for xterm
+#endif
 
     // apply these settings for stdout
     if (tcsetattr(STDOUT_FILENO, TCSAFLUSH, &conf->orig_termios) == -1) {

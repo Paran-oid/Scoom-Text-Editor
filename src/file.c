@@ -304,7 +304,6 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
 }
 
 // TODO: make it cross platform maybe
-// TODO: problem with undoing after pasting
 int editor_paste(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
     if (!pipe) return ERROR;

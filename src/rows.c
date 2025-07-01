@@ -92,11 +92,13 @@ int editor_update_row(struct EditorConfig* conf, struct Row* row) {
     // we need to check how much memory to allocate for the renderer
     int tabs = 0;
     size_t n = 0;
+
     for (size_t j = 0; j < row->size; j++) {
-        // TODO: once it finds a char and not tab leave this
         // TODO: make user able to choose between tab and spaces
         if (row->chars[j] == '\t') {
             tabs++;
+        } else {
+            break;
         }
     }
 
@@ -169,6 +171,7 @@ int editor_delete_char(struct EditorConfig* conf) {
         (conf->cx == numline_offset_size && conf->cy == 0))
         return CURSOR_OUT_OF_BOUNDS;
 
+    // TODO: fix crash when I try to remove last char on 9th line
     if (conf->cx > numline_offset_size) {
         int at = conf->cx - numline_offset_size;
         struct Row* row = &conf->rows[conf->cy];
