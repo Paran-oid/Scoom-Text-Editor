@@ -2,6 +2,7 @@
 
 ## main section
 
+- Fix bug of not being able to space as much as I want
 - Implement text selection
 - Make functions shorter (60 lines max)
 - Add more error handling.

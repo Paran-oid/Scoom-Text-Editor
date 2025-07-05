@@ -342,7 +342,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
             editor_insert_newline(conf);
             break;
 
-        case ARROW_UP:	
+        case ARROW_UP:
         case ARROW_DOWN:
         case ARROW_RIGHT:
         case ARROW_LEFT:
@@ -490,6 +490,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
 
 int editor_insert_newline(struct EditorConfig *conf) {
     struct Row *current_row;
+    // TODO: fix not being able to enter infinite spaces
 
     if (conf->numrows) {
         current_row = &conf->rows[conf->cy];
@@ -573,13 +574,13 @@ int editor_insert_newline(struct EditorConfig *conf) {
         current_row = &conf->rows[conf->cy];
 
         int updated_prefix_width = count_digits(current_row->idx + 2) + 1;
-        if (updated_prefix_width != numline_prefix_width) {
-            numline_prefix_width = updated_prefix_width;
-        }
+        numline_prefix_width =
+            updated_prefix_width;  // could have been updated, so we check
     }
 
     current_row = &conf->rows[conf->cy];
 
+    // moving cursor and rowoff
     if (result == SUCCESS && numline_prefix_width) {
         conf->cx = numline_prefix_width + current_row->indentation;
         conf->cy++;
