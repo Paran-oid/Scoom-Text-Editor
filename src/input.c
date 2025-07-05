@@ -342,7 +342,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
             editor_insert_newline(conf);
             break;
 
-        case ARROW_UP:
+        case ARROW_UP:	
         case ARROW_DOWN:
         case ARROW_RIGHT:
         case ARROW_LEFT:

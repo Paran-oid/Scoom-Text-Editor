@@ -8,8 +8,6 @@
 #include "rows.h"
 #include "terminal.h"
 
-// 50
-
 static void app_destroy(void* el) {
     if (snapshot_destroy((struct Snapshot*)el) != SUCCESS) {
         die("couldn't destroy snapshot");

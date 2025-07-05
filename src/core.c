@@ -112,6 +112,7 @@ bool check_compound_statement(const char* str, size_t len) {
     }
 
     bool isempty = stack_size(s) == 0;
+    stack_destroy(s);
     free(s);
 
     return isempty;

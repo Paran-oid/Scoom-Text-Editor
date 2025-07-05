@@ -25,6 +25,7 @@ int snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
 }
 
 int snapshot_destroy(struct Snapshot* snapshot) {
+    if (!snapshot) return NULL_PARAMETER;
     if (snapshot->text) free(snapshot->text);
     return SUCCESS;
 }
@@ -205,13 +206,11 @@ int editor_copy(struct EditorConfig* conf) {
     return SUCCESS;
 }
 
-// TODO: handle edge case of empty file
-// TODO: document this very important
 static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
                                size_t copy_buffer_size) {
     /*
     Function is based on this logic:
-        - step 1: text
+        - step 1: text5
         - step 2: te(cursor)xt
         - step 3: te + copy_buffer[0]
         - step 4: copy_buffer[1]
@@ -243,12 +242,13 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
 
     char* str_appended = malloc(cursor_offset + first_buffer_size + 1);
     char* str_remaining = strdup(row->chars + cursor_offset);
-    size_t str_remaining_size = strlen(str_remaining);
-
     if (!str_remaining) {
         free(str_appended);
-        return -1;  // TODO: make this an enum type
+        return OUT_OF_MEMORY;
     }
+
+    size_t str_remaining_size = strlen(str_remaining);
+
     memcpy(str_appended, row->chars, cursor_offset);
     memcpy(str_appended + cursor_offset, first_copy_buffer, first_buffer_size);
     str_appended[cursor_offset + first_buffer_size] = '\0';

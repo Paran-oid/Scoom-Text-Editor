@@ -97,8 +97,6 @@ int editor_update_row(struct EditorConfig* conf, struct Row* row) {
         // TODO: make user able to choose between tab and spaces
         if (row->chars[j] == '\t') {
             tabs++;
-        } else {
-            break;
         }
     }
 
@@ -339,12 +337,12 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
         char* data = (char*)curr->data;
         *data == '{' ? indent++ : indent--;
         curr = curr->next;
-        free(data);
     }
 
-    indent = indent < 0 ? 0 : indent;  // verify it's not less than 0
-
+    stack_destroy(s);
     free(s);
+
+    indent = indent < 0 ? 0 : indent;  // verify it's not less than 0
 
     int remainder_len = row->size - conf->cx + numline_offset_size;
     char* remainder = &row->chars[conf->cx - numline_offset_size];
