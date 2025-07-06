@@ -3,6 +3,9 @@
 
 struct EditorConfig;
 
+#define SCROLL_DISABLE 0
+#define MOUSE_REPORTING 0
+
 __attribute__((unused)) static struct EditorConfig* g_conf;
 
 void term_create(struct EditorConfig* conf);

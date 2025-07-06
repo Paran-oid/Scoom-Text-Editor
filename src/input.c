@@ -218,8 +218,21 @@ int editor_read_key(struct EditorConfig *conf) {
                         conf->rx = rx + conf->coloff;
                         conf->cy = cy + conf->rowoff;
 
+                        conf->sel.active = 1;
+                        if (conf->sel.start_row == -1 ||
+                            conf->sel.start_col == -1) {
+                            conf->sel.start_row = conf->cy;
+                            conf->sel.start_col = conf->cx;
+                        }
                         return CURSOR_PRESS;
                     }
+
+                    if (conf->sel.end_row == -1 || conf->sel.end_col == -1) {
+                        conf->sel.end_row = conf->cy;
+                        conf->sel.end_col = conf->cx;
+                    }
+
+                    conf->sel.active = 0;
                     return CURSOR_RELEASE;
                 }
             }
@@ -490,7 +503,6 @@ int editor_process_key_press(struct EditorConfig *conf) {
 
 int editor_insert_newline(struct EditorConfig *conf) {
     struct Row *current_row;
-    // TODO: fix not being able to enter infinite spaces
 
     if (conf->numrows) {
         current_row = &conf->rows[conf->cy];
@@ -570,21 +582,21 @@ int editor_insert_newline(struct EditorConfig *conf) {
             current_row->chars[current_row->size] = '\0';
             editor_update_row(conf, current_row);
         }
-
-        current_row = &conf->rows[conf->cy];
-
-        int updated_prefix_width = count_digits(current_row->idx + 2) + 1;
-        numline_prefix_width =
-            updated_prefix_width;  // could have been updated, so we check
     }
 
     current_row = &conf->rows[conf->cy];
+
+    int updated_prefix_width = count_digits(current_row->idx + 2) + 1;
+    numline_prefix_width =
+        updated_prefix_width;  // could have been updated, so we check
 
     // moving cursor and rowoff
     if (result == SUCCESS && numline_prefix_width) {
         conf->cx = numline_prefix_width + current_row->indentation;
         conf->cy++;
-
+        if (conf->cy >= conf->rowoff + conf->screen_rows) {
+            conf->rowoff++;
+        }
         if (new_indent > original_indent) {
             conf->cx++;
         } else if (new_indent < original_indent) {

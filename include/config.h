@@ -14,6 +14,14 @@
 struct Snapshot;
 struct DList;
 
+struct EditorCursorSelect {
+    int active;
+    int start_row;
+    int start_col;
+    int end_row;
+    int end_col;
+};
+
 struct EditorConfig {
     // Pointers (8 bytes each on 64-bit)
     char* filepath;
@@ -42,6 +50,7 @@ struct EditorConfig {
 
     // Terminal config (termios is usually ~60 bytes, well-aligned)
     struct termios orig_termios;
+    struct EditorCursorSelect sel;
 };
 
 enum EditorStatus {

@@ -6,6 +6,7 @@
 
 /* Miscellaneous */
 
+void process_init(void* (*func)(void*));
 void die(const char* s);
 char closing_paren(char c);
 

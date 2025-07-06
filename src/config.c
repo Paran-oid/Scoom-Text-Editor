@@ -54,6 +54,10 @@ int conf_create(struct EditorConfig* conf) {
         return -1;
     }
 
+    conf->sel.start_row = -1;
+    conf->sel.start_col = -1;
+    conf->sel.end_row = -1;
+    conf->sel.end_col = -1;
     conf->screen_rows -= 2;
 
     return SUCCESS;
@@ -118,6 +122,12 @@ int conf_destroy(struct EditorConfig* conf) {
     conf->status_msg[0] = '\0';
     conf->sbuf_time = 0;
     conf->last_time_modified = 0;
+
+    conf->sel.active = 0;
+    conf->sel.start_row = -1;
+    conf->sel.start_col = -1;
+    conf->sel.end_row = -1;
+    conf->sel.end_col = -1;
 
     memset(&conf->orig_termios, 0, sizeof(conf->orig_termios));
 
