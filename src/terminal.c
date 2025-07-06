@@ -11,8 +11,8 @@
 #include "config.h"
 #include "core.h"
 
-#define SCROLL_DISABLE 0
-#define MOUSE_REPORTING 0
+#define SCROLL_DISABLE false
+#define MOUSE_REPORTING false
 
 /*
         usage of each macro (BRKINT, ICRNL, INPCK, ...) can be understood in

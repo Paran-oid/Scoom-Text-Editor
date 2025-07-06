@@ -23,7 +23,7 @@ int editor_insert_row_char(struct EditorConfig* conf, struct Row* row, int at,
         return CURSOR_OUT_OF_BOUNDS;
     }
     // n stands for new for now
-    char* new_chars = realloc(row->chars, row->size + 1);
+    char* new_chars = realloc(row->chars, row->size + 2);
     if (!new_chars) return OUT_OF_MEMORY;
     row->chars = new_chars;
 
@@ -31,13 +31,14 @@ int editor_insert_row_char(struct EditorConfig* conf, struct Row* row, int at,
     row->chars[at] = c;
 
     row->size++;
+    row->chars[row->size] = '\0';
     editor_update_row(conf, row);
 
     return SUCCESS;
 }
 
 int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
-    if (at < 0 || (size_t)at > row->size) return CURSOR_OUT_OF_BOUNDS;
+    if (at < 0 || (size_t)at >= row->size) return CURSOR_OUT_OF_BOUNDS;
 
     memmove(&row->chars[at], &row->chars[at + 1], row->size - at - 1);
     row->size--;
@@ -138,6 +139,7 @@ int editor_delete_row(struct EditorConfig* conf, int at) {
         conf->rows[j].idx--;
     }
     conf->numrows--;
+    conf->rows = realloc(conf->rows, sizeof(struct Row) * conf->numrows);
     conf->is_dirty = 1;
     return SUCCESS;
 }
