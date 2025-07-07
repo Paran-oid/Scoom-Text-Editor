@@ -228,12 +228,13 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
                 already selecting
                 */
                 if ((j == conf->sel.start_col &&
-                     filerow == conf->sel.end_row) ||
-                    currently_selecting) {
+                     filerow == conf->sel.start_row) ||
+                    (currently_selecting && j == 0)) {
                     ab_append(ab, "\x1b[7m", 4);  // invert colors
                     currently_selecting = inverted_color = 1;
-                } else if (j == conf->sel.end_col &&
-                           filerow == conf->sel.end_row) {
+                }
+
+                if (j == conf->sel.end_col && filerow == conf->sel.end_row) {
                     ab_append(ab, "\x1b[m", 3);
                     currently_selecting = inverted_color = 0;
                 }
