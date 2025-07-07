@@ -12,6 +12,11 @@ enum EditorKey {
     ARROW_RIGHT,
     ARROW_LEFT,
 
+    SHIFT_ARROW_UP,
+    SHIFT_ARROW_DOWN,
+    SHIFT_ARROW_RIGHT,
+    SHIFT_ARROW_LEFT,
+
     CTRL_ARROW_UP,
     CTRL_ARROW_DOWN,
     CTRL_ARROW_RIGHT,
@@ -44,8 +49,9 @@ int editor_set_status_message(struct EditorConfig *conf, const char *message,
 char *editor_prompt(struct EditorConfig *conf, const char *prompt,
                     void (*callback)(struct EditorConfig *, char *, int));
 
-int editor_ctrl_(struct EditorConfig *conf, const enum EditorKey key);
+int editor_cursor_ctrl(struct EditorConfig *conf, const enum EditorKey key);
 int editor_cursor_move(struct EditorConfig *conf, int key);
+int editor_shift_select(struct EditorConfig *conf, int key);
 
 int editor_read_key(struct EditorConfig *conf);
 int editor_process_key_press(struct EditorConfig *conf);

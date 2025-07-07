@@ -3,6 +3,7 @@
 ## main section
 
 - Implement text selection (with shift).
+- Start using stdint stuff instead of just putting int everywhere
 - Make sure copying and pasting works with text selection.
 - Make functions shorter (60 lines max).
 - Add more error handling.

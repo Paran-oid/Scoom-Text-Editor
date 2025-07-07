@@ -2,6 +2,7 @@
 
 #include <ctype.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -161,7 +162,10 @@ int editor_draw_statusbar(struct EditorConfig *conf, struct ABuf *ab) {
     return SUCCESS;
 }
 
+// TODO: reduce length of this function
 int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
+    uint8_t currently_selecting = 0;
+
     for (size_t y = 0; y < (size_t)conf->screen_rows; y++) {
         int filerow = y + conf->rowoff;
         if (filerow >= conf->numrows) {
@@ -211,6 +215,7 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
             // highlighting and control section
             unsigned char *hl = &conf->rows[filerow].hl[conf->coloff];
             int current_color = -1;
+            int inverted_color = currently_selecting;
 
             for (int j = 0; j < rowlen + offset_size; j++) {
                 if (j < offset_size) {
@@ -218,13 +223,31 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
                     continue;
                 }
 
+                /*
+                if we are encountering selected line OR we are
+                already selecting
+                */
+                if ((j == conf->sel.start_col &&
+                     filerow == conf->sel.end_row) ||
+                    currently_selecting) {
+                    ab_append(ab, "\x1b[7m", 4);  // invert colors
+                    currently_selecting = inverted_color = 1;
+                } else if (j == conf->sel.end_col &&
+                           filerow == conf->sel.end_row) {
+                    ab_append(ab, "\x1b[m", 3);
+                    currently_selecting = inverted_color = 0;
+                }
+
                 if (iscntrl(s[j])) {
                     char sym = (s[j] <= 26) ? '@' + s[j] : '?';
                     ab_append(ab, "\x1b[7m", 4);
                     ab_append(ab, &sym, 1);
-                    ab_append(ab, "\x1b[m", 3);
 
-                    if (current_color != -1) {
+                    if (!inverted_color) {
+                        ab_append(ab, "\x1b[m", 3);
+                    }
+
+                    if (current_color != -1 && !inverted_color) {
                         char buf[16];
                         size_t clen = snprintf(buf, sizeof(buf), "\x1b[%dm",
                                                current_color);
@@ -240,7 +263,7 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
 
                 } else {
                     int color = editor_syntax_to_color_row(hl[j - offset_size]);
-                    if (color != current_color) {
+                    if (color != current_color && !inverted_color) {
                         current_color = color;
                         char buf[16];
                         int clen =
@@ -251,6 +274,16 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
                 }
             }
             free(s);
+
+            /*
+            remove inverted_color in case it is applied because of
+            text selection
+            */
+
+            if (inverted_color) {
+                inverted_color = 0;
+                ab_append(ab, "\x1b[m", 3);
+            }
             ab_append(ab, "\x1b[39m", 5);  // reset to default color
         }
         ab_append(ab, "\x1b[K", 4);  // erase in line command

@@ -1,6 +1,7 @@
 #include "input.h"
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -162,6 +163,58 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
     return SUCCESS;
 }
 
+int editor_shift_select(struct EditorConfig *conf, int key) {
+    const struct Row *row = &conf->rows[conf->cy];
+    const uint8_t numline_offset = editor_row_numline_calculate(row);
+
+    // basically taking into account numline offset
+    const uint32_t real_rx = conf->rx - numline_offset;
+
+    if (conf->sel.start_col == -1 || conf->sel.end_col == -1 ||
+        conf->sel.start_row == -1 || conf->sel.end_row == -1) {
+        conf_select_update(conf, conf->cy, conf->cy, conf->cx, conf->cx);
+    }
+
+    switch (key) {
+        case SHIFT_ARROW_LEFT:
+            // at beginning of first line
+            if (conf->cy <= 0 && conf->cx == numline_offset) break;
+            editor_cursor_move(conf, ARROW_LEFT);
+
+            conf_select_update(conf, conf->cy, conf->sel.end_row, conf->cx,
+                               conf->sel.end_col);
+            break;
+
+        case SHIFT_ARROW_UP:
+            // at the first line
+            if (conf->cy == conf->rowoff) break;
+            editor_cursor_move(conf, ARROW_UP);
+            conf_select_update(conf, conf->cy, conf->sel.end_row, conf->cx,
+                               conf->sel.end_col);
+            break;
+
+        case SHIFT_ARROW_RIGHT:
+            // at end of last line
+            if (conf->cy >= conf->numrows - 1 && real_rx == row->rsize) break;
+            editor_cursor_move(conf, ARROW_RIGHT);
+            conf_select_update(conf, conf->sel.start_row, conf->cy,
+                               conf->sel.start_col, conf->cx);
+            break;
+
+        case SHIFT_ARROW_DOWN:
+            // at last line
+            if (conf->cy == conf->numrows - 1) break;
+            editor_cursor_move(conf, ARROW_DOWN);
+            conf_select_update(conf, conf->sel.start_row, conf->cy,
+                               conf->sel.start_col, conf->cx);
+            break;
+    }
+    conf->sel.active = 1;
+    return SUCCESS;
+}
+
+// TODO: document this crap and make cleaner code
+// TODO: make default case for each (just in case)
 int editor_read_key(struct EditorConfig *conf) {
     char c;
     int nread;
@@ -177,6 +230,7 @@ int editor_read_key(struct EditorConfig *conf) {
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
         if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
         if (seq[0] == '[') {
+            // mouse press or release
             if (seq[1] == '<') {
                 // just fill the rest of the seq buf
                 size_t len;
@@ -271,6 +325,17 @@ int editor_read_key(struct EditorConfig *conf) {
                                 return CTRL_ARROW_LEFT;
                                 break;
                         }
+                    } else if (seq[1] == '1' && seq[3] == '2') {
+                        switch (seq[4]) {
+                            case 'A':
+                                return SHIFT_ARROW_UP;
+                            case 'B':
+                                return SHIFT_ARROW_DOWN;
+                            case 'C':
+                                return SHIFT_ARROW_RIGHT;
+                            case 'D':
+                                return SHIFT_ARROW_LEFT;
+                        }
                     }
                 }
             }
@@ -325,7 +390,12 @@ int editor_process_key_press(struct EditorConfig *conf) {
     time_t current_time = time(NULL);
     double time_elapsed = difftime(current_time, conf->last_time_modified);
 
+    if (!(c >= 1004 && c <= 1007)) {
+        conf->sel.active = 0;
+        conf_select_update(conf, -1, -1, -1, -1);
+    }
     switch (c) {
+        // TODO
         case F1:
         case F2:
         case F3:
@@ -342,6 +412,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
         case CURSOR_RELEASE:
         case EMPTY_BUFFER:
             break;
+
         case INTERRUPT_ENCOUNTERED:
             conf->resize_needed = 0;
             term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols);
@@ -361,6 +432,17 @@ int editor_process_key_press(struct EditorConfig *conf) {
         case ARROW_LEFT:
             editor_cursor_move(conf, c);
             break;
+
+        case SHIFT_ARROW_UP:
+        case SHIFT_ARROW_DOWN:
+        case SHIFT_ARROW_RIGHT:
+        case SHIFT_ARROW_LEFT:
+            editor_shift_select(conf, c);
+            break;
+
+            // TODO: make ctrl_arrow special function like
+            // editor_cursor_move to
+            // TODO: put write less code in the function overall
 
         case CTRL_ARROW_UP:
             if (conf->rowoff > 0) {

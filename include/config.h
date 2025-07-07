@@ -101,6 +101,8 @@ enum EditorStatus {
 };
 
 int conf_create(struct EditorConfig* conf);
+int conf_select_update(struct EditorConfig* conf, int start_row, int end_row,
+                       int start_col, int end_col);
 int conf_to_snapshot_update(struct EditorConfig* conf,
                             struct Snapshot* snapshot);
 int conf_destroy_rows(struct EditorConfig* conf);

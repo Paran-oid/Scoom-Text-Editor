@@ -63,6 +63,18 @@ int conf_create(struct EditorConfig* conf) {
     return SUCCESS;
 }
 
+int conf_select_update(struct EditorConfig* conf, int start_row, int end_row,
+                       int start_col, int end_col) {
+    if (!conf) return NULL_PARAMETER;
+
+    conf->sel.start_col = start_col;
+    conf->sel.start_row = start_row;
+    conf->sel.end_col = end_col;
+    conf->sel.end_row = end_row;
+
+    return SUCCESS;
+}
+
 int conf_to_snapshot_update(struct EditorConfig* conf,
                             struct Snapshot* snapshot) {
     enum EditorStatus retval;
