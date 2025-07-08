@@ -3,6 +3,7 @@
 ## main section
 
 - Implement text selection (with shift).
+- Make all numline_offset_size have the same fucking name jesus
 - Start using stdint stuff instead of just putting int everywhere
 - Make sure copying and pasting works with text selection.
 - Make functions shorter (60 lines max).

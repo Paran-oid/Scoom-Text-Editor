@@ -145,3 +145,17 @@ int conf_destroy(struct EditorConfig* conf) {
 
     return SUCCESS;
 }
+
+enum EditorCursorAnchor conf_check_cursor_anchor(struct EditorConfig* conf,
+                                                 int anchor_row,
+                                                 int anchor_col) {
+    struct EditorCursorSelect* sel = &conf->sel;
+    if (conf->cy < anchor_row) {
+        return CURSOR_ANCHOR_BEFORE;
+    } else if (conf->cy == anchor_row && conf->cx < anchor_col) {
+        return CURSOR_ANCHOR_BEFORE;
+    } else {
+        return CURSOR_ANCHOR_AFTER;
+    }
+    return CURSOR_ANCHOR_INVALID;
+}

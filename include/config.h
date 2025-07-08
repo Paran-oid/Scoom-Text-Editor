@@ -100,12 +100,23 @@ enum EditorStatus {
     EXIT_CODE = 100  // used just to leave the program's loop
 };
 
+enum EditorCursorAnchor {
+    CURSOR_ANCHOR_BEFORE,
+    CURSOR_ANCHOR_AFTER,
+    CURSOR_ANCHOR_INVALID
+};
+
 int conf_create(struct EditorConfig* conf);
+int conf_destroy(struct EditorConfig* conf);
+
 int conf_select_update(struct EditorConfig* conf, int start_row, int end_row,
                        int start_col, int end_col);
 int conf_to_snapshot_update(struct EditorConfig* conf,
                             struct Snapshot* snapshot);
 int conf_destroy_rows(struct EditorConfig* conf);
-int conf_destroy(struct EditorConfig* conf);
+
+enum EditorCursorAnchor conf_check_cursor_anchor(struct EditorConfig* conf,
+                                                 int anchor_row,
+                                                 int anchor_col);
 
 #endif

@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#define max(a, b) ((a) > (b) ? (a) : (b))
+
 /* Miscellaneous */
 
 void process_init(void* (*func)(void*));

@@ -164,14 +164,15 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
 }
 
 int editor_shift_select(struct EditorConfig *conf, int key) {
-    const struct Row *row = &conf->rows[conf->cy];
-    const uint8_t numline_offset = editor_row_numline_calculate(row);
+    struct Row *row = &conf->rows[conf->cy];
+    uint8_t numline_offset = editor_row_numline_calculate(row);
+    struct EditorCursorSelect *sel = &conf->sel;
 
     // basically taking into account numline offset
     const uint32_t real_rx = conf->rx - numline_offset;
 
-    if (conf->sel.start_col == -1 || conf->sel.end_col == -1 ||
-        conf->sel.start_row == -1 || conf->sel.end_row == -1) {
+    if (sel->start_col == -1 || sel->end_col == -1 || sel->start_row == -1 ||
+        sel->end_row == -1) {
         conf_select_update(conf, conf->cy, conf->cy, conf->cx, conf->cx);
     }
 
@@ -181,35 +182,58 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
             if (conf->cy <= 0 && conf->cx == numline_offset) break;
             editor_cursor_move(conf, ARROW_LEFT);
 
-            conf_select_update(conf, conf->cy, conf->sel.end_row, conf->cx,
-                               conf->sel.end_col);
+            if (!sel->active || conf_check_cursor_anchor(conf, sel->start_row,
+                                                         sel->start_col) ==
+                                    CURSOR_ANCHOR_BEFORE) {
+                conf_select_update(conf, conf->cy, sel->end_row, conf->cx,
+                                   sel->end_col);
+            } else {
+                conf_select_update(conf, sel->start_row, sel->end_row,
+                                   sel->start_col, sel->end_col - 1);
+            }
+
             break;
 
         case SHIFT_ARROW_UP:
             // at the first line
             if (conf->cy == conf->rowoff) break;
             editor_cursor_move(conf, ARROW_UP);
-            conf_select_update(conf, conf->cy, conf->sel.end_row, conf->cx,
-                               conf->sel.end_col);
+            conf_select_update(conf, conf->cy, sel->end_row, conf->cx,
+                               sel->end_col);
             break;
 
         case SHIFT_ARROW_RIGHT:
             // at end of last line
             if (conf->cy >= conf->numrows - 1 && real_rx == row->rsize) break;
             editor_cursor_move(conf, ARROW_RIGHT);
-            conf_select_update(conf, conf->sel.start_row, conf->cy,
-                               conf->sel.start_col, conf->cx);
+
+            // if we are not selecting and didn't already move the cursor
+            if (!sel->active ||
+                conf_check_cursor_anchor(conf, sel->end_row, sel->end_col) ==
+                    CURSOR_ANCHOR_AFTER) {
+                conf_select_update(conf, sel->start_row, conf->cy,
+                                   sel->start_col, conf->cx);
+            } else {
+                conf_select_update(conf, sel->start_row, sel->end_row,
+                                   sel->start_col + 1, sel->end_col);
+            }
+
             break;
 
         case SHIFT_ARROW_DOWN:
             // at last line
             if (conf->cy == conf->numrows - 1) break;
             editor_cursor_move(conf, ARROW_DOWN);
-            conf_select_update(conf, conf->sel.start_row, conf->cy,
-                               conf->sel.start_col, conf->cx);
+            conf_select_update(conf, sel->start_row, conf->cy, sel->start_col,
+                               conf->cx);
             break;
     }
-    conf->sel.active = 1;
+
+    if (sel->start_row == sel->end_row && sel->start_col == sel->end_col) {
+        sel->active = 0;
+    } else {
+        sel->active = 1;
+    }
     return SUCCESS;
 }
 
@@ -233,6 +257,7 @@ int editor_read_key(struct EditorConfig *conf) {
             // mouse press or release
             if (seq[1] == '<') {
                 // just fill the rest of the seq buf
+                struct EditorCursorSelect *sel = &conf->sel;
                 size_t len;
                 if ((len = read(STDIN_FILENO, &seq[2], 29)) <= 0) return '\x1b';
 
@@ -272,21 +297,20 @@ int editor_read_key(struct EditorConfig *conf) {
                         conf->rx = rx + conf->coloff;
                         conf->cy = cy + conf->rowoff;
 
-                        conf->sel.active = 1;
-                        if (conf->sel.start_row == -1 ||
-                            conf->sel.start_col == -1) {
-                            conf->sel.start_row = conf->cy;
-                            conf->sel.start_col = conf->cx;
+                        sel->active = 1;
+                        if (sel->start_row == -1 || sel->start_col == -1) {
+                            sel->start_row = conf->cy;
+                            sel->start_col = conf->cx;
                         }
                         return CURSOR_PRESS;
                     }
 
-                    if (conf->sel.end_row == -1 || conf->sel.end_col == -1) {
-                        conf->sel.end_row = conf->cy;
-                        conf->sel.end_col = conf->cx;
+                    if (sel->end_row == -1 || sel->end_col == -1) {
+                        sel->end_row = conf->cy;
+                        sel->end_col = conf->cx;
                     }
 
-                    conf->sel.active = 0;
+                    sel->active = 0;
                     return CURSOR_RELEASE;
                 }
             }

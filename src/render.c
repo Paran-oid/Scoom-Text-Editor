@@ -193,13 +193,16 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
                 ab_append(ab, "~", 1);
             }
         } else {
+            struct EditorCursorSelect *sel = &conf->sel;
+            struct Row *row = &conf->rows[filerow];
+
             // numline section
-            int filerow_num = conf->rows[filerow].idx + 1;
+            int filerow_num = row->idx + 1;
             char offset[16];
             int offset_size =
                 snprintf(offset, sizeof(offset), "%d ", filerow_num);
 
-            int rowlen = conf->rows[filerow].rsize - conf->coloff;
+            int rowlen = row->rsize - conf->coloff;
             if (rowlen < 0) rowlen = 0;
             if (rowlen > conf->screen_cols - offset_size) {
                 rowlen = conf->screen_cols - offset_size;
@@ -209,13 +212,20 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
 
             char *s = calloc(offset_size + rowlen, sizeof(char));
             memcpy(s, offset, offset_size);
-            memcpy(s + offset_size, &conf->rows[filerow].render[conf->coloff],
-                   rowlen);
+            memcpy(s + offset_size, &row->render[conf->coloff], rowlen);
 
             // highlighting and control section
-            unsigned char *hl = &conf->rows[filerow].hl[conf->coloff];
+            unsigned char *hl = &row->hl[conf->coloff];
             int current_color = -1;
             int inverted_color = currently_selecting;
+
+
+			/*
+				
+				*Logic for next time:
+				- if we are at j = 0 and we are selecting, add [7m to invert colors
+				- if we are still selecitng and we reached the end finish the invert colors with [m
+			*/
 
             for (int j = 0; j < rowlen + offset_size; j++) {
                 if (j < offset_size) {
@@ -227,14 +237,13 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
                 if we are encountering selected line OR we are
                 already selecting
                 */
-                if ((j == conf->sel.start_col &&
-                     filerow == conf->sel.start_row) ||
+                if ((j == sel->start_col && filerow == sel->start_row) ||
                     (currently_selecting && j == 0)) {
                     ab_append(ab, "\x1b[7m", 4);  // invert colors
                     currently_selecting = inverted_color = 1;
                 }
 
-                if (j == conf->sel.end_col && filerow == conf->sel.end_row) {
+                if (j == sel->end_col && filerow == sel->end_row) {
                     ab_append(ab, "\x1b[m", 3);
                     currently_selecting = inverted_color = 0;
                 }
@@ -274,6 +283,15 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
                     ab_append(ab, &s[j], 1);
                 }
             }
+
+            // handle edge case where user is going up/down
+            if ((sel->start_col == row->rsize + offset_size &&
+                 filerow == sel->start_row)) {
+                ab_append(ab, "\x1b[7m", 4);  // invert colors
+                currently_selecting = inverted_color = 1;
+                ab_append(ab, "\x1b[m", 3);
+            }
+
             free(s);
 
             /*
