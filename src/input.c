@@ -188,8 +188,8 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
                 conf_select_update(conf, conf->cy, sel->end_row, conf->cx,
                                    sel->end_col);
             } else {
-                conf_select_update(conf, sel->start_row, sel->end_row,
-                                   sel->start_col, sel->end_col - 1);
+                conf_select_update(conf, sel->start_row, conf->cy,
+                                   sel->start_col, conf->cx);
             }
 
             break;
@@ -198,8 +198,17 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
             // at the first line
             if (conf->cy == conf->rowoff) break;
             editor_cursor_move(conf, ARROW_UP);
-            conf_select_update(conf, conf->cy, sel->end_row, conf->cx,
-                               sel->end_col);
+
+            if (!sel->active || conf_check_cursor_anchor(conf, sel->start_row,
+                                                         sel->start_col) ==
+                                    CURSOR_ANCHOR_BEFORE) {
+                conf_select_update(conf, conf->cy, sel->end_row, conf->cx,
+                                   sel->end_col);
+            } else {
+                conf_select_update(conf, sel->start_row, conf->cy,
+                                   sel->start_col, conf->cx);
+            }
+
             break;
 
         case SHIFT_ARROW_RIGHT:
@@ -214,8 +223,8 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
                 conf_select_update(conf, sel->start_row, conf->cy,
                                    sel->start_col, conf->cx);
             } else {
-                conf_select_update(conf, sel->start_row, sel->end_row,
-                                   sel->start_col + 1, sel->end_col);
+                conf_select_update(conf, conf->cy, sel->end_row, conf->cx,
+                                   sel->end_col);
             }
 
             break;
@@ -224,8 +233,15 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
             // at last line
             if (conf->cy == conf->numrows - 1) break;
             editor_cursor_move(conf, ARROW_DOWN);
-            conf_select_update(conf, sel->start_row, conf->cy, sel->start_col,
-                               conf->cx);
+            if (!sel->active ||
+                conf_check_cursor_anchor(conf, sel->end_row, sel->end_col) ==
+                    CURSOR_ANCHOR_AFTER) {
+                conf_select_update(conf, sel->start_row, conf->cy,
+                                   sel->start_col, conf->cx);
+            } else {
+                conf_select_update(conf, conf->cy, sel->end_row, conf->cx,
+                                   sel->end_col);
+            }
             break;
     }
 

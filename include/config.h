@@ -103,6 +103,7 @@ enum EditorStatus {
 enum EditorCursorAnchor {
     CURSOR_ANCHOR_BEFORE,
     CURSOR_ANCHOR_AFTER,
+    CURSOR_ANCHOR_AT,
     CURSOR_ANCHOR_INVALID
 };
 
