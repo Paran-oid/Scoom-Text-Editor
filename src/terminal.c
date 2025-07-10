@@ -11,11 +11,7 @@
 #include "config.h"
 #include "core.h"
 
-/*
-        usage of each macro (BRKINT, ICRNL, INPCK, ...) can be understood in
-        termios.h docs
-*/
-
+// Any needed info can be found on termios.h
 // TCSAFLUSH: flushes before leaving the program
 
 static void term_size_flag_update(int sig) {
@@ -76,7 +72,6 @@ void term_create(struct EditorConfig* conf) {
     conf->orig_termios.c_cc[VTIME] = 1;
 
 #if SCROLL_DISABLE
-    // reenable these below me
     // Hide terminal's scrollbar
     if (write(STDOUT_FILENO, "\x1b[?1049h", 9) == -1) {
         die("couldn't hide terminal's scrollbar");

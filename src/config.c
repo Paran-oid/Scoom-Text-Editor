@@ -58,6 +58,8 @@ int conf_create(struct EditorConfig* conf) {
     conf->sel.start_col = -1;
     conf->sel.end_row = -1;
     conf->sel.end_col = -1;
+
+    // inorder to have message bar and status bar we need to decrement by 2
     conf->screen_rows -= 2;
 
     return SUCCESS;
@@ -149,7 +151,6 @@ int conf_destroy(struct EditorConfig* conf) {
 enum EditorCursorAnchor conf_check_cursor_anchor(struct EditorConfig* conf,
                                                  int anchor_row,
                                                  int anchor_col) {
-    struct EditorCursorSelect* sel = &conf->sel;
     if (conf->cy < anchor_row) {
         return CURSOR_ANCHOR_BEFORE;
     } else if (conf->cy == anchor_row && conf->cx < anchor_col) {

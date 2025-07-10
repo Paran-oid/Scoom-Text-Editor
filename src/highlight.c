@@ -17,11 +17,12 @@
 
 // init of database
 char* C_HL_EXTENSIONS[] = {".c", ".h", ".cpp", NULL};
-char* C_HL_KEYWORDS[] = {"switch",    "if",      "while",   "for",    "break",
-                         "continue",  "return",  "else",    "struct", "union",
-                         "typedef",   "static",  "enum",    "class",  "case",
-                         "int|",      "long|",   "double|", "float|", "char|",
-                         "unsigned|", "signed|", "void|",   NULL};
+char* C_HL_KEYWORDS[] = {
+    "switch",    "if",      "while",   "for",       "break",
+    "continue",  "return",  "else",    "struct",    "union",
+    "typedef",   "static",  "enum",    "class",     "case",
+    "int|",      "long|",   "double|", "float|",    "char|",
+    "unsigned|", "signed|", "void|",   "#include|", NULL};
 
 // HLDB: highlight database
 struct EditorSyntax HLDB[] = {{"C", C_HL_EXTENSIONS, C_HL_KEYWORDS,
@@ -59,8 +60,7 @@ int editor_syntax_to_color_row(enum EditorHighlight hl) {
 
 int editor_syntax_highlight_select(struct EditorConfig* conf) {
     /*
-            ?strcmp(a, b) is equivalent to strcmp(a, b) == 0
-    */
+     */
 
     conf->syntax = NULL;
     if (conf->filepath == NULL) return FILE_NOT_FOUND;
@@ -74,8 +74,9 @@ int editor_syntax_highlight_select(struct EditorConfig* conf) {
         int j = 0;
         while (hl_entity->filematch[j]) {
             bool is_ext = hl_entity->filematch[j][0] == '.';
-            if ((is_ext && ext && !strcmp(hl_entity->filematch[j], ext)) ||
-                (!is_ext && !strcmp(hl_entity->filematch[j], conf->filepath))) {
+            if ((is_ext && ext && strcmp(hl_entity->filematch[j], ext) == 0) ||
+                (!is_ext &&
+                 strcmp(hl_entity->filematch[j], conf->filepath) == 0)) {
                 conf->syntax = hl_entity;
 
                 for (int filerow = 0; filerow < conf->numrows; filerow++) {
@@ -88,6 +89,43 @@ int editor_syntax_highlight_select(struct EditorConfig* conf) {
     }
 
     return SYNTAX_ERROR;
+}
+
+static size_t handle_multiline_comment(struct Row* row, size_t i,
+                                       const char* mce, size_t mce_len,
+                                       bool* in_comment) {
+    row->hl[i] = HL_MCOMMENT;
+    if (strncmp(&row->render[i], mce, mce_len) == 0) {
+        memset(&row->hl[i], HL_MCOMMENT, mce_len);
+        *in_comment = false;
+        return mce_len;
+    }
+    return 1;
+}
+
+static size_t handle_string(struct Row* row, size_t i, int* in_string) {
+    char c = row->render[i];
+    row->hl[i] = HL_STRING;
+    if (c == '\\' && i + 1 < row->size) {
+        row->hl[i + 1] = HL_STRING;
+        return 2;
+    }
+    if (c == *in_string) *in_string = 0;
+    return 1;
+}
+
+static size_t handle_keywords(struct Row* row, size_t i, char** keywords) {
+    for (size_t j = 0; keywords[j]; j++) {
+        size_t klen = strlen(keywords[j]);
+        int is_kw2 = keywords[j][klen - 1] == '|';
+        if (is_kw2) klen--;
+        if ((strncmp(&row->render[i], keywords[j], klen) == 0) &&
+            check_seperator(row->render[i + klen])) {
+            memset(&row->hl[i], is_kw2 ? HL_KEYWORD2 : HL_KEYWORD1, klen);
+            return klen;
+        }
+    }
+    return 0;
 }
 
 int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
@@ -119,6 +157,7 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
         char c = row->render[i];
         unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
 
+        // Singleline comment
         if (scs_len && !in_string && !in_comment) {
             if (i + scs_len <= row->size &&
                 strncmp(&row->chars[i], scs, scs_len) == 0) {
@@ -127,19 +166,13 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
             }
         }
 
+        // Multi-line comment
         if (mcs_len && mce_len && !in_string) {
             if (in_comment) {
-                row->hl[i] = HL_MCOMMENT;
-                if (strncmp(&row->render[i], mce, mce_len) == 0) {
-                    memset(&row->hl[i], HL_MCOMMENT, mce_len);
-                    i += mce_len;
-                    in_comment = false;
-                    prev_separator = true;
-                    continue;
-                } else {
-                    i++;
-                    continue;
-                }
+                i +=
+                    handle_multiline_comment(row, i, mce, mce_len, &in_comment);
+                prev_separator = true;
+                continue;
             } else if (strncmp(&row->render[i], mcs, mcs_len) == 0) {
                 i += mcs_len;
                 in_comment = true;
@@ -147,28 +180,20 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
             }
         }
 
+        // String
         if (conf->syntax->flags & HL_HIGHLIGHT_STRINGS) {
             if (in_string) {
-                row->hl[i] = HL_STRING;
-                if (c == '\\' && i + 1 < row->size) {
-                    row->hl[i + 1] = HL_STRING;
-                    i += 2;
-                    continue;
-                }
-                if (c == in_string) in_string = 0;
-                i++;
+                i += handle_string(row, i, &in_string);
                 prev_separator = 1;
                 continue;
-            } else {
-                if (c == '"' || c == '\'' || c == '\"') {
-                    in_string = c;
-                    row->hl[i] = HL_STRING;
-                    i++;
-                    continue;
-                }
+            } else if (c == '"' || c == '\'' || c == '\"') {
+                in_string = c;
+                row->hl[i++] = HL_STRING;
+                continue;
             }
         }
 
+        // Number
         if (conf->syntax->flags & HL_HIGHLIGHT_NUMBERS) {
             if ((isdigit(c) && (prev_separator || prev_hl == HL_NUMBER)) ||
                 (c == '.' && prev_hl == HL_NUMBER)) {
@@ -177,25 +202,12 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
             }
         }
 
+        // Keyword
         if (prev_separator) {
-            for (size_t j = 0; keywords[j]; j++) {
-                size_t klen = strlen(keywords[j]);
-                int is_kw2 = keywords[j][klen - 1] == '|';
-
-                if (is_kw2) klen--;
-
-                if ((strncmp(&row->render[i], keywords[j], klen) == 0) &&
-                    check_seperator(
-                        row->render[i + klen])  // we added section condition
-                                                // cuz \0 is also a separator
-                                                // technically
-
-                ) {
-                    memset(&row->hl[i], is_kw2 ? HL_KEYWORD2 : HL_KEYWORD1,
-                           klen);
-                    i += klen;
-                    break;
-                }
+            size_t step = handle_keywords(row, i, keywords);
+            if (step) {
+                i += step;
+                continue;
             }
         }
 

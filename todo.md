@@ -2,8 +2,6 @@
 
 ## main section
 
-- Implement text selection (with shift).
-- Make all numline_offset_size have the same fucking name jesus
 - Replace each row->size - numline_offset_size with real size or whatever variable...
 - Start using stdint stuff instead of just putting int everywhere
 - Make sure copying and pasting works with text selection.
@@ -16,4 +14,5 @@
 - Add watch file for changes feature (update file if externally modified).
 - Implement mouse scroll feature.
 - Handle Control shift keys too.
+- Make it cross-platform
 - Start with another project!

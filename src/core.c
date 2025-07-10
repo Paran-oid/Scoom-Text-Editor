@@ -15,6 +15,7 @@ void die(const char* s) {
     exit(EXIT_FAILURE);
 }
 
+// acceptable parms: {, (, [
 char closing_paren(char c) {
     switch (c) {
         case '{':
@@ -24,7 +25,7 @@ char closing_paren(char c) {
         case '[':
             return ']';
         default:
-            return '\0';  // or c, or 0 to indicate no match
+            return '\0';
     }
 }
 
@@ -49,6 +50,7 @@ int str_append(char** dest, const char* src) {
 
     return SUCCESS;
 }
+
 int str_prepend(char** dest, const char* src) {
     if (!dest || !src) {
         return NULL_PARAMETER;

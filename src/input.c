@@ -14,83 +14,65 @@
 #include "rows.h"
 #include "terminal.h"
 
-// TODO: once you allow spaces as indentation modify this inorder for it to work
-// TODO: for both /t and spaces
+static void skip_word_forward(struct EditorConfig *conf, struct Row *row,
+                              int numline_offset) {
+    int cursor_offset = conf->cx - numline_offset;
+    while (conf->cx < (int)row->size + numline_offset &&
+           !ISCHAR(row->chars[cursor_offset]) &&
+           (row->chars[cursor_offset] != '_'))
+        conf->cx++;
+    while (conf->cx < (int)row->size + numline_offset &&
+           (ISCHAR(row->chars[cursor_offset]) ||
+            (row->chars[cursor_offset] == '_')))
+        conf->cx++;
+}
+
+static void skip_word_backward(struct EditorConfig *conf, struct Row *row,
+                               int numline_offset) {
+    if (conf->cx == numline_offset) return;
+
+    conf->cx--;
+    int cursor_offset = conf->cx - numline_offset;
+
+    while (conf->cx > numline_offset && !ISCHAR(row->chars[cursor_offset]) &&
+           (row->chars[cursor_offset] != '_'))
+        conf->cx--;
+    while (conf->cx > numline_offset && (ISCHAR(row->chars[cursor_offset]) ||
+                                         (row->chars[cursor_offset] == '_')))
+        conf->cx--;
+    if (!ISCHAR(row->chars[cursor_offset]) &&
+        (row->chars[cursor_offset] != '_')) {
+        conf->cx++;
+    }
+}
+
 int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
     if (conf->cy < 0 || conf->cy >= conf->numrows) return CURSOR_OUT_OF_BOUNDS;
-
     struct Row *row = &conf->rows[conf->cy];
-    int numline_size = editor_row_numline_calculate(row);
+    int numline_offset = editor_row_numline_calculate(row);
+
     if (key == CTRL_ARROW_RIGHT) {
-        if (conf->cx == (int)row->size + numline_size) {
+        if (conf->cx == (int)row->size + numline_offset) {
             conf->cy++;
             if (conf->cy >= conf->numrows - 1) {
                 conf->cy--;
                 return CURSOR_OUT_OF_BOUNDS;
             }
-            conf->cx = numline_size;
             row = &conf->rows[conf->cy];
+            conf->cx = numline_offset;
         }
-
-        // try to find the first item that is not a char or _
-        while (conf->cx < (int)row->size + numline_size &&
-               !ISCHAR(row->chars[conf->cx - numline_size]) &&
-               (row->chars[conf->cx - numline_size] != '_'))
-            conf->cx++;
-
-        while (conf->cx < (int)row->size + numline_size &&
-               (ISCHAR(row->chars[conf->cx - numline_size]) ||
-                (row->chars[conf->cx - numline_size] == '_')))
-            conf->cx++;
-
+        skip_word_forward(conf, row, numline_offset);
     } else {
-        // skip any
-        bool decreased = false;
-        while (conf->cx > numline_size) {
-            int cursor_in_row = conf->cx - numline_size;
-            if (cursor_in_row > 0 && row->chars[cursor_in_row - 1] == '\t') {
-                conf->cx--;
-                decreased = true;
-            } else if ((size_t)cursor_in_row != row->size &&
-                       row->chars[cursor_in_row] == '\t') {
-                conf->cx--;
-                decreased = true;
-            } else {
-                break;
-            }
-            // if it hasn't decreased and didn't leave just decrease it
-            if (!decreased) {
-                conf->cx--;
-            }
-            decreased = false;
-        }
-        if (conf->cx == numline_size) {
+        if (conf->cx == numline_offset) {
             conf->cy--;
             if (conf->cy < 0) {
                 conf->cy = 0;
                 return CURSOR_OUT_OF_BOUNDS;
             }
             row = &conf->rows[conf->cy];
-            conf->cx = row->size != 0 ? (int)row->size - 1 : numline_size;
+            conf->cx = row->size != 0 ? (int)row->size - 1 : numline_offset;
         }
-
-        if (conf->cx != numline_size) {
-            conf->cx--;
-            while (conf->cx > numline_size &&
-                   !ISCHAR(row->chars[conf->cx - numline_size]) &&
-                   (row->chars[conf->cx - numline_size] != '_'))
-                conf->cx--;
-
-            while (conf->cx > numline_size &&
-                   (ISCHAR(row->chars[conf->cx - numline_size]) ||
-                    (row->chars[conf->cx - numline_size] == '_')))
-                conf->cx--;
-
-            if (!ISCHAR(row->chars[conf->cx - numline_size]) &&
-                (row->chars[conf->cx - numline_size] != '_')) {
-                conf->cx++;
-            }
-        }
+        skip_word_backward(conf, row, numline_offset);
     }
     return SUCCESS;
 }
@@ -99,18 +81,18 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
 
-    int numline_offset_size = 0;
+    int numline_offset = 0;
     if (row) {
-        numline_offset_size = editor_row_numline_calculate(row);
+        numline_offset = editor_row_numline_calculate(row);
     }
 
-    int desired_cx_logical = conf->cx - numline_offset_size;
+    int desired_cx_logical = conf->cx - numline_offset;
 
     switch (key) {
         case ARROW_LEFT:
-            if (conf->cx != numline_offset_size) {
+            if (conf->cx != numline_offset) {
                 if (conf->coloff != 0 &&
-                    conf->cx == numline_offset_size + conf->coloff) {
+                    conf->cx == numline_offset + conf->coloff) {
                     conf->coloff--;
                 }
                 conf->cx--;
@@ -118,45 +100,45 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
                 conf->cy--;
                 row =
                     (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
-                numline_offset_size = editor_row_numline_calculate(row);
-                conf->cx = row->size + numline_offset_size;
+                numline_offset = editor_row_numline_calculate(row);
+                conf->cx = row->size + numline_offset;
             }
             break;
         case ARROW_RIGHT:
-            if (row && conf->cx < (int)row->size + numline_offset_size) {
+            if (row && conf->cx < (int)row->size + numline_offset) {
                 conf->cx++;
             } else if (row && conf->cy < conf->numrows - 1) {
                 row = &conf->rows[++conf->cy];
-                numline_offset_size =
+                numline_offset =
                     editor_row_numline_calculate(row);  // recalculate it
-                conf->cx = numline_offset_size;
+                conf->cx = numline_offset;
             }
             break;
         case ARROW_UP:
             if (conf->cy > 0) {
                 conf->cy--;
                 row = &conf->rows[conf->cy];
-                numline_offset_size = editor_row_numline_calculate(row);
+                numline_offset = editor_row_numline_calculate(row);
                 if ((size_t)desired_cx_logical > row->size)
                     desired_cx_logical = row->size;
-                conf->cx = numline_offset_size + desired_cx_logical;
+                conf->cx = numline_offset + desired_cx_logical;
             }
             break;
         case ARROW_DOWN:
             if (conf->cy < conf->numrows - 1) {
                 conf->cy++;
                 row = &conf->rows[conf->cy];
-                numline_offset_size = editor_row_numline_calculate(row);
+                numline_offset = editor_row_numline_calculate(row);
                 if ((size_t)desired_cx_logical > row->size)
                     desired_cx_logical = row->size;
-                conf->cx = numline_offset_size + desired_cx_logical;
+                conf->cx = numline_offset + desired_cx_logical;
             }
             break;
         default:
             return CURSOR_OUT_OF_BOUNDS;
     }
     row = (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
-    if (row && conf->cx > (int)row->size + numline_offset_size) {
+    if (row && conf->cx > (int)row->size + numline_offset) {
         conf->cx = row->size;
     }
 
@@ -253,8 +235,6 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
     return SUCCESS;
 }
 
-// TODO: document this crap and make cleaner code
-// TODO: make default case for each (just in case)
 int editor_read_key(struct EditorConfig *conf) {
     char c;
     int nread;
@@ -420,7 +400,7 @@ int editor_read_key(struct EditorConfig *conf) {
 int editor_process_key_press(struct EditorConfig *conf) {
     static int quit_times = QUIT_TIMES;
 
-    struct Snapshot *s;
+    struct Snapshot *s = NULL;
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     int c = editor_read_key(conf);
@@ -435,7 +415,6 @@ int editor_process_key_press(struct EditorConfig *conf) {
         conf_select_update(conf, -1, -1, -1, -1);
     }
     switch (c) {
-        // TODO
         case F1:
         case F2:
         case F3:
@@ -451,6 +430,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
         case CURSOR_PRESS:
         case CURSOR_RELEASE:
         case EMPTY_BUFFER:
+        case FILE_READ_FAILED:
             break;
 
         case INTERRUPT_ENCOUNTERED:
@@ -480,10 +460,6 @@ int editor_process_key_press(struct EditorConfig *conf) {
             editor_shift_select(conf, c);
             break;
 
-            // TODO: make ctrl_arrow special function like
-            // editor_cursor_move to
-            // TODO: put write less code in the function overall
-
         case CTRL_ARROW_UP:
             if (conf->rowoff > 0) {
                 conf->cy--;
@@ -506,10 +482,8 @@ int editor_process_key_press(struct EditorConfig *conf) {
         case PAGE_UP:
         case PAGE_DOWN:
             if (c == PAGE_UP) {
-                // cursor jumps up to previous page
                 conf->cy = conf->rowoff;
             } else if (c == PAGE_DOWN) {
-                // cursor jumps up to next page
                 conf->cy = conf->rowoff + conf->screen_rows - 1;
                 if (conf->cy > conf->numrows) conf->cy = conf->numrows;
             }

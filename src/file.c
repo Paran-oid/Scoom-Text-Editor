@@ -38,9 +38,9 @@ int editor_open(struct EditorConfig* conf, const char* path) {
     editor_syntax_highlight_select(conf);
 
     FILE* fp = fopen(path, "r");
-    if (!fp) {
-        // create the file if it doesn't exist
 
+    // create the file if it doesn't exist
+    if (!fp) {
         fp = fopen(path, "w");
         if (!fp) die("fopen");
 
@@ -52,7 +52,6 @@ int editor_open(struct EditorConfig* conf, const char* path) {
     size_t line_cap = 0;  // size of buf basically
     ssize_t line_len = 0;
     while ((line_len = getline(&line, &line_cap, fp)) != -1) {
-        // gotta make sure there ain't any \r or \n mfs out there
         while (line_len > 0 &&
                (line[line_len - 1] == '\r' || line[line_len - 1] == '\n')) {
             line_len--;
@@ -132,10 +131,10 @@ int editor_save(struct EditorConfig* conf) {
     int fd = open(conf->filepath, O_CREAT | O_WRONLY, 0644);
 
     if (!fd) return -1;
-    // update size of file to one inserted
+
+    // update size of file to file_data_size
     if (ftruncate(fd, file_data_size) == -1) return 1;
-    if ((size_t)write(fd, file_data, file_data_size) != file_data_size)
-        return 1;
+    if (write(fd, file_data, file_data_size) < 0) return 1;
 
     if (file_data_size) {
         editor_set_status_message(conf, "%d bytes written to disk",
@@ -206,23 +205,23 @@ int editor_copy(struct EditorConfig* conf) {
     return SUCCESS;
 }
 
+/*
+Function is based on this logic:
+    - step 1: text5
+    - step 2: te(cursor)xt
+    - step 3: te + copy_buffer[0]
+    - step 4: copy_buffer[1]
+                      copy_buffer[2]
+                      ...
+                      copy_buffer[n - 2]
+    - step 5: copy_buffer[n - 1] + xt
+    */
+
+// Step 1 and 2 were already done, we need to just care about the rest
+// We decrement by -1 for each copy_buffer element because each has \n.
+
 static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
                                size_t copy_buffer_size) {
-    /*
-    Function is based on this logic:
-        - step 1: text5
-        - step 2: te(cursor)xt
-        - step 3: te + copy_buffer[0]
-        - step 4: copy_buffer[1]
-                          copy_buffer[2]
-                          ...
-                          copy_buffer[n - 2]
-        - step 5: copy_buffer[n - 1] + xt
-        */
-
-    // Step 1 and 2 were already done, we need to just care about the rest
-    // We decrement by -1 for each copy_buffer element because each has \n.
-
     if (copy_buffer_size == 0) {
         return -1;
     }
@@ -232,8 +231,8 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
     // Step 3:
 
     struct Row* row = &conf->rows[conf->cy];
-    int numline_size = editor_row_numline_calculate(row);
-    int cursor_offset = conf->cx - numline_size;
+    int numline_offset = editor_row_numline_calculate(row);
+    int cursor_offset = conf->cx - numline_offset;
 
     char* first_copy_buffer = copy_buffer[0];
     size_t first_buffer_size = strlen(first_copy_buffer);
@@ -291,9 +290,9 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
         editor_insert_row(conf, conf->cy, last_modified_row,
                           last_row_size + str_remaining_size);
 
-        numline_size = editor_row_numline_calculate(&conf->rows[conf->cy]);
+        numline_offset = editor_row_numline_calculate(&conf->rows[conf->cy]);
         total_size += strlen(last_modified_row);
-        conf->cx = last_row_size + numline_size;
+        conf->cx = last_row_size + numline_offset;
         free(last_modified_row);
 
         free(str_appended);
@@ -303,7 +302,6 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
     return total_size;
 }
 
-// TODO: make it cross platform maybe
 int editor_paste(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
     if (!pipe) return ERROR;

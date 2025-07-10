@@ -67,19 +67,21 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
         conf->rows[j].idx++;
     }
 
-    conf->rows[at].idx = at;
-    conf->rows[at].size = content_len;
-    conf->rows[at].chars = calloc(content_len + 1, sizeof(char));
+    struct Row* row = &conf->rows[at];
+
+    row->idx = at;
+    row->size = content_len;
+    row->chars = calloc(content_len + 1, sizeof(char));
 
     // copy spaces if any
     // copy the content
-    memcpy(conf->rows[at].chars, content, content_len);
+    memcpy(row->chars, content, content_len);
 
-    conf->rows[at].chars[content_len] = '\0';
-    conf->rows[at].render = NULL;
-    conf->rows[at].rsize = 0;
-    conf->rows[at].hl = NULL;
-    conf->rows[at].hl_open_comment = false;
+    row->chars[content_len] = '\0';
+    row->render = NULL;
+    row->rsize = 0;
+    row->hl = NULL;
+    row->hl_open_comment = false;
 
     conf->numrows++;
 
@@ -88,12 +90,13 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
 
     return SUCCESS;
 }
+
 int editor_update_row(struct EditorConfig* conf, struct Row* row) {
     free(row->render);
-    // we need to check how much memory to allocate for the renderer
     int tabs = 0;
     size_t n = 0;
 
+    // first we need to check how much memory to allocate for the renderer
     for (size_t j = 0; j < row->size; j++) {
         // TODO: make user able to choose between tab and spaces
         if (row->chars[j] == '\t') {
@@ -148,14 +151,13 @@ int editor_insert_char(struct EditorConfig* conf, int c) {
     if (conf->cy == conf->numrows)
         editor_insert_row(conf, conf->numrows, "", 0);
 
-    int numline_offset_size =
-        editor_row_numline_calculate(&conf->rows[conf->cy]);
+    int numline_offset = editor_row_numline_calculate(&conf->rows[conf->cy]);
 
     conf->is_dirty = 1;
     // got to make sure res is correctly calculated because cx could
     // accidentally touch the numbers part
     int res = editor_insert_row_char(conf, &conf->rows[conf->cy],
-                                     conf->cx - numline_offset_size, c);
+                                     conf->cx - numline_offset, c);
     conf->cx++;
     return res;
 }
@@ -163,17 +165,15 @@ int editor_insert_char(struct EditorConfig* conf, int c) {
 int editor_delete_char(struct EditorConfig* conf) {
     if (conf->numrows == 0) return EMPTY_BUFFER;
 
-    int numline_offset_size =
-        editor_row_numline_calculate(&conf->rows[conf->cy]);
+    int numline_offset = editor_row_numline_calculate(&conf->rows[conf->cy]);
 
     // make sure we're not at end of file or at beginning of first line
     if (conf->cy == conf->numrows ||
-        (conf->cx == numline_offset_size && conf->cy == 0))
+        (conf->cx == numline_offset && conf->cy == 0))
         return CURSOR_OUT_OF_BOUNDS;
 
-    // TODO: fix crash when I try to remove last char on 9th line
-    if (conf->cx > numline_offset_size) {
-        int at = conf->cx - numline_offset_size;
+    if (conf->cx > numline_offset) {
+        int at = conf->cx - numline_offset;
         struct Row* row = &conf->rows[conf->cy];
         char currchar = row->chars[at - 1];
         // handle automated paranthesis removal
@@ -188,7 +188,7 @@ int editor_delete_char(struct EditorConfig* conf) {
         conf->cx--;
         return res;
     } else {
-        conf->cx = conf->rows[conf->cy - 1].size + numline_offset_size;
+        conf->cx = conf->rows[conf->cy - 1].size + numline_offset;
         editor_row_append_string(conf, &conf->rows[conf->cy - 1],
                                  conf->rows[conf->cy].chars,
                                  conf->rows[conf->cy].size);
@@ -237,7 +237,6 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
 }
 
 int editor_string_to_rows(struct EditorConfig* conf, char* buffer) {
-    // delete all rows in conf->rows
     conf_destroy_rows(conf);
 
     char* ptr = buffer;
@@ -279,7 +278,6 @@ int editor_row_append_string(struct EditorConfig* conf, struct Row* row,
 int editor_update_cx_rx(struct Row* row, int cx) {
     int rx = 0;
 
-    // numline offset effect
     for (size_t j = 0; j < (size_t)cx; j++) {
         if (j < row->size) {
             if (row->chars[j] == '\t') {
@@ -293,7 +291,7 @@ int editor_update_cx_rx(struct Row* row, int cx) {
 
 int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
                       size_t* len) {
-    int numline_offset_size = editor_row_numline_calculate(row);
+    int numline_offset = editor_row_numline_calculate(row);
     int indent = row->indentation;  // modified indentation (if needed)
 
     bool in_string = false;
@@ -303,7 +301,7 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
     Stack* s = malloc(sizeof(Stack));
     stack_create(s, NULL, free);
 
-    for (size_t i = 0; i < (size_t)conf->cx - numline_offset_size; i++) {
+    for (size_t i = 0; i < (size_t)conf->cx - numline_offset; i++) {
         char c = row->chars[i];
 
         if (c == '"' && (i == 0 || row->chars[i - 1] != '\\')) {
@@ -346,8 +344,8 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
 
     indent = indent < 0 ? 0 : indent;  // verify it's not less than 0
 
-    int remainder_len = row->size - conf->cx + numline_offset_size;
-    char* remainder = &row->chars[conf->cx - numline_offset_size];
+    int remainder_len = row->size - conf->cx + numline_offset;
+    char* remainder = &row->chars[conf->cx - numline_offset];
 
     char* newline = malloc(remainder_len + indent + 1);
     if (!newline) return OUT_OF_MEMORY;
