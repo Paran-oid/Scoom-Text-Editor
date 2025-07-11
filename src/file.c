@@ -1,6 +1,7 @@
 #include "file.h"
 
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,7 +71,7 @@ int editor_run(struct EditorConfig* conf) {
     term_create(conf);
 
 #ifdef DEBUG
-    if (editor_open(conf, "test.c") != SUCCESS) {
+    if (editor_open(conf, "testo.py") != SUCCESS) {
         conf_destroy(conf);
         return FILE_OPEN_FAILED;
     }
@@ -194,13 +195,65 @@ int editor_copy(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard", "w");
     if (!pipe) return 1;
 
-    struct Row* row = &conf->rows[conf->cy];
-    if (fwrite(row->chars, sizeof(char), row->size, pipe) == 0) {
-        pclose(pipe);
-        return 2;
+    struct EditorCursorSelect* sel = &conf->sel;
+
+    unsigned long bytes_size = 0;
+
+    if (!sel->active) {
+        struct Row* row = &conf->rows[conf->cy];
+        if ((bytes_size = fwrite(row->chars, sizeof(char), row->size, pipe)) ==
+            0) {
+            pclose(pipe);
+            return FILE_WRITE_FAILED;
+        }
+    } else {
+        int i = sel->start_row;
+        struct Row* row = &conf->rows[i];
+        int numline_offset = editor_row_numline_calculate(row);
+
+        int sel_start_col_cx =
+            editor_update_rx_cx(row, sel->start_row - numline_offset);
+        int sel_end_col_cx =
+            editor_update_rx_cx(row, sel->end_row - -numline_offset);
+
+        while (i <= sel->end_row) {
+            row = &conf->rows[i];
+            int temp = 0;
+            if (i == sel->start_row) {
+                if ((temp = fwrite(row->chars + sel_start_col_cx, sizeof(char),
+                                   row->size - sel_start_col_cx, pipe)) == 0) {
+                    pclose(pipe);
+                    return FILE_WRITE_FAILED;
+                }
+
+            } else if (i == sel->end_row - 1) {
+                if ((temp = fwrite(row->chars + sel_end_col_cx, sizeof(char),
+                                   row->size - sel_end_col_cx, pipe)) == 0) {
+                    pclose(pipe);
+                    return FILE_WRITE_FAILED;
+                }
+            } else {
+                if ((temp = fwrite(row->chars, sizeof(char), row->size,
+                                   pipe)) == 0) {
+                    pclose(pipe);
+                    return FILE_WRITE_FAILED;
+                }
+            }
+
+            // add new line if not end of row
+            if (i != sel->end_row) {
+                if (fwrite("\n", sizeof(char), 1, pipe) == 0) {
+                    pclose(pipe);
+                    return FILE_WRITE_FAILED;
+                }
+            }
+
+            bytes_size += temp;
+            i++;
+        }
     }
 
-    editor_set_status_message(conf, "copied %d bytes into buffer", row->size);
+    editor_set_status_message(conf, "copied %d bytes into buffer", bytes_size);
     pclose(pipe);
     return SUCCESS;
 }
@@ -302,6 +355,7 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
     return total_size;
 }
 
+// TODO: fix memory leak in this function
 int editor_paste(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
     if (!pipe) return ERROR;
@@ -315,12 +369,14 @@ int editor_paste(struct EditorConfig* conf) {
     while ((len = getline(&content_pasted, &size, pipe)) != -1) {
         copy_buffer =
             realloc(copy_buffer, sizeof(char*) * (copy_buffer_size + 1));
+        // make sure this gets freed later
         copy_buffer[copy_buffer_size] = strdup(content_pasted);
         if (!copy_buffer || !copy_buffer[copy_buffer_size]) {
             for (size_t i = 0; i < copy_buffer_size; i++) {
                 free(copy_buffer[i]);
             }
             free(copy_buffer);
+            return OUT_OF_MEMORY;
         }
         copy_buffer_size++;
     }
@@ -352,6 +408,8 @@ int editor_paste(struct EditorConfig* conf) {
 
     return SUCCESS;
 }
+
+// TODO: fix this function
 int editor_cut(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard", "w");
     if (!pipe) return 1;

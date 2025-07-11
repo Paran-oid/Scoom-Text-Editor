@@ -24,7 +24,8 @@ struct EditorSyntax {
     char* multiline_comment_start;
     char* multiline_comment_end;
 
-    char indent;
+    char indent_start;
+    char indent_end;
 };
 
 int editor_syntax_highlight_select(struct EditorConfig* conf);

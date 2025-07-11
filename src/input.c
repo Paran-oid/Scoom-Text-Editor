@@ -142,6 +142,9 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
         conf->cx = row->size;
     }
 
+    conf->rx =
+        editor_update_cx_rx(row, conf->cx - numline_offset) + numline_offset;
+
     return SUCCESS;
 }
 
@@ -161,17 +164,17 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
     switch (key) {
         case SHIFT_ARROW_LEFT:
             // at beginning of first line
-            if (conf->cy <= 0 && conf->cx == numline_offset) break;
+            if (conf->cy <= 0 && conf->rx == numline_offset) break;
             editor_cursor_move(conf, ARROW_LEFT);
 
             if (!sel->active || conf_check_cursor_anchor(conf, sel->start_row,
                                                          sel->start_col) ==
                                     CURSOR_ANCHOR_BEFORE) {
-                conf_select_update(conf, conf->cy, sel->end_row, conf->cx,
+                conf_select_update(conf, conf->cy, sel->end_row, conf->rx,
                                    sel->end_col);
             } else {
                 conf_select_update(conf, sel->start_row, conf->cy,
-                                   sel->start_col, conf->cx);
+                                   sel->start_col, conf->rx);
             }
 
             break;
@@ -184,11 +187,11 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
             if (!sel->active || conf_check_cursor_anchor(conf, sel->start_row,
                                                          sel->start_col) ==
                                     CURSOR_ANCHOR_BEFORE) {
-                conf_select_update(conf, conf->cy, sel->end_row, conf->cx,
+                conf_select_update(conf, conf->cy, sel->end_row, conf->rx,
                                    sel->end_col);
             } else {
                 conf_select_update(conf, sel->start_row, conf->cy,
-                                   sel->start_col, conf->cx);
+                                   sel->start_col, conf->rx);
             }
 
             break;
@@ -203,9 +206,9 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
                 conf_check_cursor_anchor(conf, sel->end_row, sel->end_col) ==
                     CURSOR_ANCHOR_AFTER) {
                 conf_select_update(conf, sel->start_row, conf->cy,
-                                   sel->start_col, conf->cx);
+                                   sel->start_col, conf->rx);
             } else {
-                conf_select_update(conf, conf->cy, sel->end_row, conf->cx,
+                conf_select_update(conf, conf->cy, sel->end_row, conf->rx,
                                    sel->end_col);
             }
 
@@ -219,9 +222,9 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
                 conf_check_cursor_anchor(conf, sel->end_row, sel->end_col) ==
                     CURSOR_ANCHOR_AFTER) {
                 conf_select_update(conf, sel->start_row, conf->cy,
-                                   sel->start_col, conf->cx);
+                                   sel->start_col, conf->rx);
             } else {
-                conf_select_update(conf, conf->cy, sel->end_row, conf->cx,
+                conf_select_update(conf, conf->cy, sel->end_row, conf->rx,
                                    sel->end_col);
             }
             break;
@@ -409,11 +412,8 @@ int editor_process_key_press(struct EditorConfig *conf) {
 
     time_t current_time = time(NULL);
     double time_elapsed = difftime(current_time, conf->last_time_modified);
+    conf->sel.active = 0;
 
-    if (!(c >= 1004 && c <= 1007)) {
-        conf->sel.active = 0;
-        conf_select_update(conf, -1, -1, -1, -1);
-    }
     switch (c) {
         case F1:
         case F2:
@@ -450,6 +450,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
         case ARROW_DOWN:
         case ARROW_RIGHT:
         case ARROW_LEFT:
+
             editor_cursor_move(conf, c);
             break;
 
@@ -457,6 +458,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
         case SHIFT_ARROW_DOWN:
         case SHIFT_ARROW_RIGHT:
         case SHIFT_ARROW_LEFT:
+            conf->sel.active = 1;
             editor_shift_select(conf, c);
             break;
 
@@ -557,11 +559,14 @@ int editor_process_key_press(struct EditorConfig *conf) {
             stack_push(conf->stack_undo, s);
             conf->last_time_modified = current_time;
 
+            // TODO: fix me
             editor_cut(conf);
             break;
         case CTRL_KEY('f'):
             editor_find(conf);
             break;
+        case CTRL_KEY('g'):
+            editor_find(conf);
         case CTRL_KEY('z'):
             editor_undo(conf);
             break;
@@ -599,7 +604,6 @@ int editor_process_key_press(struct EditorConfig *conf) {
 
 int editor_insert_newline(struct EditorConfig *conf) {
     struct Row *current_row;
-
     if (conf->numrows) {
         current_row = &conf->rows[conf->cy];
     } else {

@@ -153,9 +153,9 @@ enum EditorCursorAnchor conf_check_cursor_anchor(struct EditorConfig* conf,
                                                  int anchor_col) {
     if (conf->cy < anchor_row) {
         return CURSOR_ANCHOR_BEFORE;
-    } else if (conf->cy == anchor_row && conf->cx < anchor_col) {
+    } else if (conf->cy == anchor_row && conf->rx < anchor_col) {
         return CURSOR_ANCHOR_BEFORE;
-    } else if (conf->cy == anchor_row && conf->cx == anchor_col) {
+    } else if (conf->cy == anchor_row && conf->rx == anchor_col) {
         return CURSOR_ANCHOR_AT;
     } else {
         return CURSOR_ANCHOR_AFTER;

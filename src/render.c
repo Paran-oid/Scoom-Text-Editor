@@ -331,9 +331,9 @@ int editor_scroll(struct EditorConfig *conf) {
 
     conf->rx = conf->cx;
     if (conf->cy < conf->numrows) {
-        conf->rx = conf->rx = editor_update_cx_rx(&conf->rows[conf->cy],
-                                                  conf->cx - numline_offset) +
-                              numline_offset;
+        conf->rx = editor_update_cx_rx(&conf->rows[conf->cy],
+                                       conf->cx - numline_offset) +
+                   numline_offset;
     }
 
     // Horizontal scrolling

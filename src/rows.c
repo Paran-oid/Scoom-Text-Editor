@@ -293,6 +293,11 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
                       size_t* len) {
     int numline_offset = editor_row_numline_calculate(row);
     int indent = row->indentation;  // modified indentation (if needed)
+    char language_indent_start = conf->syntax->indent_start;
+    char language_indent_end = conf->syntax->indent_end;
+
+    char buf_indent_start[2] = {language_indent_start, '\0'};
+    char buf_indent_end[2] = {language_indent_end, '\0'};
 
     bool in_string = false;
 
@@ -310,17 +315,25 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
         }
         if (!in_string) {
             char* data;
-            if (c == '{') {
-                data = strdup("{");
-                stack_push(s, data);
-            } else if (c == '}') {
-                char* peaked = stack_peek(s);
-                void* ptr;
-                if (peaked && strcmp(peaked, "{") == 0) {
-                    stack_pop(s, &ptr);
-                    free(ptr);
-                } else {
-                    data = strdup("}");
+            // handle languages who indent with closing brackets
+            if (language_indent_end) {
+                if (c == language_indent_start) {
+                    data = strdup(buf_indent_start);
+                    stack_push(s, data);
+                } else if (c == language_indent_end) {
+                    char* peaked = stack_peek(s);
+                    void* ptr;
+                    if (peaked && strcmp(peaked, buf_indent_start) == 0) {
+                        stack_pop(s, &ptr);
+                        free(ptr);
+                    } else {
+                        data = strdup(buf_indent_end);
+                        stack_push(s, data);
+                    }
+                }
+            } else {
+                if (c == language_indent_start) {
+                    data = strdup(buf_indent_start);
                     stack_push(s, data);
                 }
             }
@@ -335,7 +348,7 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
     ListNode* curr = s->head;
     while (curr != NULL) {
         char* data = (char*)curr->data;
-        *data == '{' ? indent++ : indent--;
+        *data == language_indent_start ? indent++ : indent--;
         curr = curr->next;
     }
 

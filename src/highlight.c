@@ -18,18 +18,67 @@
 // init of database
 char* C_HL_EXTENSIONS[] = {".c", ".h", ".cpp", NULL};
 char* C_HL_KEYWORDS[] = {
-    "switch",    "if",      "while",   "for",       "break",
-    "continue",  "return",  "else",    "struct",    "union",
-    "typedef",   "static",  "enum",    "class",     "case",
-    "int|",      "long|",   "double|", "float|",    "char|",
-    "unsigned|", "signed|", "void|",   "#include|", NULL};
+    // Control flow
+    "if", "else", "switch", "case", "default", "for", "while", "do", "break",
+    "continue", "return", "goto",
+
+    // Data types (with | to highlight them as types)
+    "char|", "short|", "int|", "long|", "float|", "double|", "void|", "_Bool|",
+    "unsigned|", "signed|", "size_t|", "ptrdiff_t|", "intptr_t|", "uintptr_t|",
+
+    // Qualifiers & Storage class
+    "const", "volatile", "static", "extern", "register", "auto", "restrict",
+    "inline",
+
+    // Type definitions & Structuring
+    "struct", "union", "enum", "typedef", "sizeof|", "typeof|",
+
+    // Preprocessor
+    "#define|", "#undef|", "#include|", "#if|", "#ifdef|", "#ifndef|", "#else|",
+    "#elif|", "#endif|", "#pragma|",
+
+    // Boolean literals (C99+)
+    "true|", "false|",
+
+    // C++ compatibility (optional in case you handle C++)
+    "class", "public", "private", "protected", "namespace", "new", "delete",
+    "this", "operator", "try", "catch", "throw",
+
+    NULL};
+
+char* PY_HL_EXTENSIONS[] = {".py", NULL};
+char* PY_HL_KEYWORDS[] = {"def",    "return",   "if",     "elif",     "else",
+                          "for",    "while",    "break",  "continue", "pass",
+                          "import", "from",     "as",     "class",    "try",
+                          "except", "finally",  "raise",  "with",     "lambda",
+                          "global", "nonlocal", "assert", "yield",    "del",
+                          "True|",  "False|",   "None|",  NULL};
+
+char* JS_HL_EXTENSIONS[] = {".js", ".jsx", NULL};
+char* JS_HL_KEYWORDS[] = {
+    "function", "return",   "if",     "else",   "for",     "while",
+    "break",    "continue", "var",    "let",    "const",   "switch",
+    "case",     "default",  "try",    "catch",  "finally", "throw",
+    "class",    "extends",  "import", "from",   "export",  "new",
+    "this",     "super",    "true|",  "false|", "null|",   "undefined|",
+    NULL};
 
 // HLDB: highlight database
-struct EditorSyntax HLDB[] = {{"C", C_HL_EXTENSIONS, C_HL_KEYWORDS,
-                               HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS |
-                                   HL_HIGHLIGHT_COMMENTS |
-                                   HL_HIGHLIGHT_MCOMMENTS,
-                               "//", "/*", "*/", '{'}};
+
+struct EditorSyntax HLDB[] = {
+    {"C", C_HL_EXTENSIONS, C_HL_KEYWORDS,
+     HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS | HL_HIGHLIGHT_COMMENTS |
+         HL_HIGHLIGHT_MCOMMENTS,
+     "//", "/*", "*/", '{', '}'},
+
+    {"Python", PY_HL_EXTENSIONS, PY_HL_KEYWORDS,
+     HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS | HL_HIGHLIGHT_COMMENTS, "#",
+     NULL, NULL, ':', '\0'},
+
+    {"JavaScript", JS_HL_EXTENSIONS, JS_HL_KEYWORDS,
+     HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS | HL_HIGHLIGHT_COMMENTS |
+         HL_HIGHLIGHT_MCOMMENTS,
+     "//", "/*", "*/", '{', '}'}};
 
 #define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 
