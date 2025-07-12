@@ -1,7 +1,7 @@
 #ifndef FILE_H
 #define FILE_H
 
-#define DEBUG
+#define DEBUG_MODE 0
 
 #include <stddef.h>
 

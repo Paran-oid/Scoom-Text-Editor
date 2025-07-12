@@ -44,6 +44,7 @@ struct EditorConfig {
     // bitfields packed into one 4-byte int
     unsigned int is_dirty : 1;
     unsigned int resize_needed : 1;
+    unsigned int program_state : 1;  // 1-started or 0-finished
 
     // char array (80 bytes)
     char status_msg[80];

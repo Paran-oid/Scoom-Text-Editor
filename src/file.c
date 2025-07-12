@@ -70,7 +70,7 @@ int editor_run(struct EditorConfig* conf) {
     conf_create(conf);
     term_create(conf);
 
-#ifdef DEBUG
+#if DEBUG_MODE
     if (editor_open(conf, "testo.py") != SUCCESS) {
         conf_destroy(conf);
         return FILE_OPEN_FAILED;
@@ -290,12 +290,14 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
     char* first_copy_buffer = copy_buffer[0];
     size_t first_buffer_size = strlen(first_copy_buffer);
 
+    // just get rid of any existing \n
     if (strchr(first_copy_buffer, '\n')) first_buffer_size--;
 
     char* str_appended = malloc(cursor_offset + first_buffer_size + 1);
     char* str_remaining = strdup(row->chars + cursor_offset);
-    if (!str_remaining) {
+    if (!str_remaining || !str_appended) {
         free(str_appended);
+        free(str_remaining);
         return OUT_OF_MEMORY;
     }
 
@@ -307,8 +309,9 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
 
     total_size += first_buffer_size;
 
+    // if there is only one line
+    // go straight to step 5 and just append remaining string
     if (copy_buffer_size == 1) {
-        // go straight to step 5 and just append remaining string
         str_append(&str_appended, str_remaining);
         editor_delete_row(conf, conf->cy);
         editor_insert_row(
@@ -347,15 +350,14 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
         total_size += strlen(last_modified_row);
         conf->cx = last_row_size + numline_offset;
         free(last_modified_row);
-
-        free(str_appended);
-        free(str_remaining);
     }
+
+    free(str_appended);
+    free(str_remaining);
 
     return total_size;
 }
 
-// TODO: fix memory leak in this function
 int editor_paste(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
     if (!pipe) return ERROR;
@@ -409,7 +411,6 @@ int editor_paste(struct EditorConfig* conf) {
     return SUCCESS;
 }
 
-// TODO: fix this function
 int editor_cut(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard", "w");
     if (!pipe) return 1;
@@ -426,9 +427,12 @@ int editor_cut(struct EditorConfig* conf) {
         if (conf->rows[conf->cy].size == 0) {
             return 1;
         } else {
-            editor_delete_row(conf, 0);
-            editor_insert_row(conf, 0, "", 0);
-            conf->cx = 0;
+            conf->cx = editor_row_numline_calculate(row);
+            editor_delete_row(conf, conf->rowoff);
+            row = &conf->rows[conf->cy];
+            if (row) {
+                conf->cx = editor_row_numline_calculate(row);
+            }
         }
     };
 

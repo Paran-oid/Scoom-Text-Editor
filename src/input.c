@@ -574,6 +574,9 @@ int editor_process_key_press(struct EditorConfig *conf) {
             editor_redo(conf);
             break;
         default:
+            // program officially starts
+            if (!conf->program_state) conf->program_state = 1;
+
             if (time_elapsed > 0.5) {
                 s = malloc(sizeof(struct Snapshot));
                 if (!s) return SNAPSHOT_FAILED;

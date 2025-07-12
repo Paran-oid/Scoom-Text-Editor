@@ -21,6 +21,8 @@ static int app_cmp(const void* str1, const void* str2) {
 
 int conf_create(struct EditorConfig* conf) {
     conf->filepath = NULL;
+    // this is true only when user inputs something
+    conf->program_state = 0;
 
     // status message section
     conf->status_msg[0] = '\0';
@@ -111,6 +113,7 @@ int conf_destroy_rows(struct EditorConfig* conf) {
 
 int conf_destroy(struct EditorConfig* conf) {
     if (conf->filepath) free(conf->filepath);
+    conf->program_state = 0;
 
     conf_destroy_rows(conf);
 

@@ -192,7 +192,8 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
                 welcome screen
         */
         if (filerow >= conf->numrows) {
-            if (conf->numrows == 0 && y == (size_t)conf->screen_rows / 3) {
+            if (!conf->program_state && conf->numrows == 0 &&
+                y == (size_t)conf->screen_rows / 3) {
                 helper_welcome_screen(conf, ab);
             } else {
                 ab_append(ab, "~", 1);
