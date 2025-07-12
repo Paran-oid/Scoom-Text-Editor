@@ -13,7 +13,7 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(include_dir include)
 set(src
-	main.c
+	src/main.c
 	src/terminal.c
 	src/render.c
 	src/file.c

@@ -6,7 +6,7 @@
 #include <termios.h>
 #include <time.h>
 
-#define SCOOM_VERSION 0.01
+#define SCOOM_VERSION 0.76
 #define TAB_SIZE 4
 #define QUIT_TIMES 3
 #define IDENT_SIZE 4

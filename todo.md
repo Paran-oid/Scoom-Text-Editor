@@ -2,7 +2,6 @@
 
 ## main section
 
-- Make it use way less memory than it does currently.
 - Add more error handling.
 - Document my code.
 - Add watch file for changes feature (update file if externally modified).
