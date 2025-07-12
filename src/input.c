@@ -559,14 +559,11 @@ int editor_process_key_press(struct EditorConfig *conf) {
             stack_push(conf->stack_undo, s);
             conf->last_time_modified = current_time;
 
-            // TODO: fix me
             editor_cut(conf);
             break;
         case CTRL_KEY('f'):
             editor_find(conf);
             break;
-        case CTRL_KEY('g'):
-            editor_find(conf);
         case CTRL_KEY('z'):
             editor_undo(conf);
             break;

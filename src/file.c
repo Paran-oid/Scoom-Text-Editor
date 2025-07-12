@@ -525,6 +525,5 @@ int editor_find(struct EditorConfig* conf) {
         conf->rowoff = saved_rowoff;
         conf->coloff = saved_coloff;
     }
-
     return SUCCESS;
 }
