@@ -14,7 +14,7 @@ int editor_free_row(struct Row* row) {
     free(row->chars);
     free(row->render);
     free(row->hl);
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_insert_row_char(struct EditorConfig* conf, struct Row* row, int at,
@@ -34,7 +34,7 @@ int editor_insert_row_char(struct EditorConfig* conf, struct Row* row, int at,
     row->chars[row->size] = '\0';
     editor_update_row(conf, row);
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
@@ -49,7 +49,7 @@ int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
     editor_update_row(conf, row);
     conf->is_dirty = 1;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 //* make this code shorter if possible instead of having to do conf->rows[at] do
@@ -88,7 +88,7 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
     conf->is_dirty = 1;
     editor_update_row(conf, &conf->rows[at]);
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_update_row(struct EditorConfig* conf, struct Row* row) {
@@ -130,7 +130,7 @@ int editor_update_row(struct EditorConfig* conf, struct Row* row) {
     row->render[n] = '\0';
 
     editor_update_syntax(conf, row);
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_delete_row(struct EditorConfig* conf, int at) {
@@ -144,7 +144,7 @@ int editor_delete_row(struct EditorConfig* conf, int at) {
     conf->numrows--;
     conf->rows = realloc(conf->rows, sizeof(struct Row) * conf->numrows);
     conf->is_dirty = 1;
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_insert_char(struct EditorConfig* conf, int c) {
@@ -233,7 +233,7 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
     *curr_ptr = '\0';
     *result = file_data;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_string_to_rows(struct EditorConfig* conf, char* buffer) {
@@ -260,7 +260,7 @@ int editor_string_to_rows(struct EditorConfig* conf, char* buffer) {
 
     conf->numrows = index;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_row_append_string(struct EditorConfig* conf, struct Row* row,
@@ -272,7 +272,7 @@ int editor_row_append_string(struct EditorConfig* conf, struct Row* row,
     editor_update_row(conf, row);
     conf->is_dirty = 1;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_update_cx_rx(struct Row* row, int cx) {
@@ -364,7 +364,7 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
     char* remainder = &row->chars[conf->cx - numline_offset];
 
     char* newline = malloc(remainder_len + indent + 1);
-    if (!newline) die("");
+    if (!newline) die("malloc for newline failed");
 
     memset(newline, '\t', indent);
     memcpy(&newline[indent], remainder, remainder_len);
@@ -373,7 +373,7 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
     *data = newline;
     *len = remainder_len + indent;
 
-    return SUCCESS;
+    return EXIT_EXIT_SUCCESS;
 }
 
 int editor_update_rx_cx(struct Row* row, int rx) {
