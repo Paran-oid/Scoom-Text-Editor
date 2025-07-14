@@ -19,10 +19,11 @@ struct EditorSyntax {
     char* filetype;
     char** filematch;
     char** keywords;
-    int flags;
     char* singleline_comment_start;
     char* multiline_comment_start;
     char* multiline_comment_end;
+
+    int flags;
 
     char indent_start;
     char indent_end;

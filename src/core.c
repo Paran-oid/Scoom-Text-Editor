@@ -6,12 +6,16 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "config.h"
+#include "stack.h"
 
 /* Misc */
 
-void die(const char* s) {
-    perror(s);
+#define die(msg) (_die(msg, __FILE__, __LINE__, __func__))
+
+static inline void _die(const char* msg, const char* file, int line,
+                        const char* func) {
+    fprintf(stderr, "[%s:%d in %s] Fatal: %s\n", file, line, func, msg);
+	free(temp);
     exit(EXIT_FAILURE);
 }
 
@@ -31,15 +35,13 @@ char closing_paren(char c) {
 
 /* String and Char operations*/
 int str_append(char** dest, const char* src) {
-    if (!dest || !src) {
-        return NULL_PARAMETER;
-    }
+    if (!dest || !src) die("tried to append to an empty string");
 
     size_t dest_len = strlen(*dest);
     size_t src_len = strlen(src);
 
     char* result = malloc(src_len + dest_len + 1);
-    if (!result) return OUT_OF_MEMORY;
+    if (!result) die("error allocating memory for str_append");
 
     memcpy(result, *dest, dest_len);
     memcpy(result + dest_len, src, src_len);
@@ -48,19 +50,17 @@ int str_append(char** dest, const char* src) {
     free(*dest);
     *dest = result;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int str_prepend(char** dest, const char* src) {
-    if (!dest || !src) {
-        return NULL_PARAMETER;
-    }
+    if (!dest || !src) die("tried to prepend to an empty string");
 
     size_t dest_len = strlen(*dest);
     size_t src_len = strlen(src);
 
     char* result = malloc(src_len + dest_len + 1);
-    if (!result) return OUT_OF_MEMORY;
+    if (!result) die("error allocating memory for str_prepend");
 
     memcpy(result, src, src_len);
     memcpy(result + src_len, *dest, dest_len);
@@ -69,7 +69,7 @@ int str_prepend(char** dest, const char* src) {
     free(*dest);
     *dest = result;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 /* Checking */
@@ -79,9 +79,8 @@ bool check_seperator(unsigned char c) {
 }
 
 bool check_compound_statement(const char* str, size_t len) {
-    if (count_char(str, len, '{') == 0 && count_char(str, len, '}') == 0) {
+    if (count_char(str, len, '{') == 0 && count_char(str, len, '}') == 0)
         return false;
-    }
 
     Stack* s = malloc(sizeof(Stack));
     stack_create(s, NULL, free);
@@ -169,7 +168,7 @@ int count_char(const char* str, const size_t size, char c) {
 }
 
 int count_digits(int n) {
-    if (n == 0) return INVALID_ARG;
+    if (n == 0) return 0;
 
     int res = 0;
     while (n) {
@@ -207,7 +206,7 @@ int count_first_spaces(const char* s, size_t len) {
 
 int swap(void* a, void* b, size_t elsize) {
     void* temp = malloc(elsize);
-    if (!temp) return OUT_OF_MEMORY;
+    if (!temp) die("memory allocation for temp in swap failed");
 
     memcpy(temp, a, elsize);
     memcpy(a, b, elsize);
@@ -215,5 +214,5 @@ int swap(void* a, void* b, size_t elsize) {
 
     free(temp);
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }

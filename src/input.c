@@ -47,7 +47,7 @@ static void skip_word_backward(struct EditorConfig *conf, struct Row *row,
 }
 
 int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
-    if (conf->cy < 0 || conf->cy >= conf->numrows) return CURSOR_OUT_OF_BOUNDS;
+    if (conf->cy < 0 || conf->cy >= conf->numrows) return EXIT_FAILURE;
     struct Row *row = &conf->rows[conf->cy];
     int numline_offset = editor_row_numline_calculate(row);
 
@@ -56,7 +56,7 @@ int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
             conf->cy++;
             if (conf->cy >= conf->numrows - 1) {
                 conf->cy--;
-                return CURSOR_OUT_OF_BOUNDS;
+                die("unrealistic cursor dimensions");
             }
             row = &conf->rows[conf->cy];
             conf->cx = numline_offset;
@@ -67,14 +67,14 @@ int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
             conf->cy--;
             if (conf->cy < 0) {
                 conf->cy = 0;
-                return CURSOR_OUT_OF_BOUNDS;
+                die("unrealistic cursor dimensions");
             }
             row = &conf->rows[conf->cy];
             conf->cx = row->size != 0 ? (int)row->size - 1 : numline_offset;
         }
         skip_word_backward(conf, row, numline_offset);
     }
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_cursor_move(struct EditorConfig *conf, int key) {
@@ -135,7 +135,7 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
             }
             break;
         default:
-            return CURSOR_OUT_OF_BOUNDS;
+            die("unrealistic cursor dimensions");
     }
     row = (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     if (row && conf->cx > (int)row->size + numline_offset) {
@@ -145,7 +145,7 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
     conf->rx =
         editor_update_cx_rx(row, conf->cx - numline_offset) + numline_offset;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_shift_select(struct EditorConfig *conf, int key) {
@@ -235,10 +235,10 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
     } else {
         sel->active = 1;
     }
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
-int editor_read_key(struct EditorConfig *conf) {
+int editor_read_key(struct EditorConfig *conf __attribute__((unused))) {
     char c;
     int nread;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
@@ -253,66 +253,6 @@ int editor_read_key(struct EditorConfig *conf) {
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
         if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
         if (seq[0] == '[') {
-            // mouse press or release
-            if (seq[1] == '<') {
-                // just fill the rest of the seq buf
-                struct EditorCursorSelect *sel = &conf->sel;
-                size_t len;
-                if ((len = read(STDIN_FILENO, &seq[2], 29)) <= 0) return '\x1b';
-
-                int rx, cy, button;
-                char event_type;
-
-                // Ensure null-terminated string for sscanf
-                seq[2 + len] = '\0';
-                // Use sscanf to extract button, x, y, and the event type
-                // character (M or m)
-
-                // M Mouse button press (event_type) at (x, y)
-                // m Mouse button release (event_type) at (x, y)
-
-                if (sscanf(&seq[2], "%d;%d;%d%c", &button, &rx, &cy,
-                           &event_type) == 4) {
-                    if (conf->numrows == 0) return EMPTY_BUFFER;
-                    // we will just handle press button
-                    if (event_type == 'M') {
-                        // we need to account for one indexed cursor positions
-                        rx -= 2;
-                        cy--;
-
-                        if (cy >= conf->numrows + conf->rowoff)
-                            cy = conf->numrows + conf->rowoff - 1;
-
-                        struct Row *row = &conf->rows[cy];
-                        int numline_offset = editor_row_numline_calculate(row);
-
-                        if (rx >
-                            (int)row->rsize + numline_offset + conf->coloff) {
-                            rx = row->rsize + numline_offset + conf->coloff;
-                        }
-
-                        conf->cx = editor_update_rx_cx(row, rx) +
-                                   numline_offset + conf->coloff;
-                        conf->rx = rx + conf->coloff;
-                        conf->cy = cy + conf->rowoff;
-
-                        sel->active = 1;
-                        if (sel->start_row == -1 || sel->start_col == -1) {
-                            sel->start_row = conf->cy;
-                            sel->start_col = conf->cx;
-                        }
-                        return CURSOR_PRESS;
-                    }
-
-                    if (sel->end_row == -1 || sel->end_col == -1) {
-                        sel->end_row = conf->cy;
-                        sel->end_col = conf->cx;
-                    }
-
-                    sel->active = 0;
-                    return CURSOR_RELEASE;
-                }
-            }
             if ('0' <= seq[1] && seq[1] <= '9') {
                 if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
                 if (seq[2] == '~') {
@@ -392,7 +332,7 @@ int editor_read_key(struct EditorConfig *conf) {
         return c;
     }
 
-    return FILE_READ_FAILED;
+    return EXIT_FAILURE;
 }
 
 /*
@@ -427,17 +367,15 @@ int editor_process_key_press(struct EditorConfig *conf) {
         case F10:
         case F11:
         case F12:
-        case CURSOR_PRESS:
-        case CURSOR_RELEASE:
-        case EMPTY_BUFFER:
-        case FILE_READ_FAILED:
             break;
 
-        case INTERRUPT_ENCOUNTERED:
-            conf->resize_needed = 0;
-            term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols);
-            conf->screen_rows -= 2;  // for prompt and message rows
-            break;
+        // TODO: do something about this commented code
+
+        // case INTERRUPT_ENCOUNTERED:
+        //     conf->resize_needed = 0;
+        //     term_get_window_size(conf, &conf->screen_rows,
+        //     &conf->screen_cols); conf->screen_rows -= 2;  // for prompt and
+        //     message rows break;
         case '\r':
             s = malloc(sizeof(struct Snapshot));
             snapshot_create(conf, s);
@@ -513,7 +451,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
 
             if (time_elapsed > 0.5) {
                 s = malloc(sizeof(struct Snapshot));
-                if (!s) return SNAPSHOT_FAILED;
+                if (!s) die("snapshot malloc failed");
                 snapshot_create(conf, s);
                 stack_push(conf->stack_undo, s);
             }
@@ -528,9 +466,9 @@ int editor_process_key_press(struct EditorConfig *conf) {
                                           "Press CTRL-Q %d time(s) to leave",
                                           quit_times);
                 quit_times--;
-                return SUCCESS;
+                return EXIT_FAILURE;
             }
-            return EXIT_CODE;
+            return EXIT_SUCCESS;
             break;
         case CTRL_KEY('l'):
         case '\x1b':
@@ -545,7 +483,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
             break;
         case CTRL_KEY('v'):
             s = malloc(sizeof(struct Snapshot));
-            if (!s) return SNAPSHOT_FAILED;
+            if (!s) die("snapshot malloc failed");
             snapshot_create(conf, s);
             stack_push(conf->stack_undo, s);
             conf->last_time_modified = current_time;
@@ -554,7 +492,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
             break;
         case CTRL_KEY('x'):
             s = malloc(sizeof(struct Snapshot));
-            if (!s) return SNAPSHOT_FAILED;
+            if (!s) die("snapshot malloc failed");
             snapshot_create(conf, s);
             stack_push(conf->stack_undo, s);
             conf->last_time_modified = current_time;
@@ -576,7 +514,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
 
             if (time_elapsed > 0.5) {
                 s = malloc(sizeof(struct Snapshot));
-                if (!s) return SNAPSHOT_FAILED;
+                if (!s) die("snapshot malloc failed");
                 snapshot_create(conf, s);
                 stack_push(conf->stack_undo, s);
             }
@@ -599,7 +537,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
     // we reset if user entered something else than a CTRL-Q
     quit_times = QUIT_TIMES;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_insert_newline(struct EditorConfig *conf) {
@@ -609,7 +547,7 @@ int editor_insert_newline(struct EditorConfig *conf) {
     } else {
         editor_insert_row(conf, 0, "", 0);
         current_row = &conf->rows[0];
-        return SUCCESS;
+        return EXIT_SUCCESS;
     }
 
     int numline_prefix_width = editor_row_numline_calculate(current_row);
@@ -691,7 +629,7 @@ int editor_insert_newline(struct EditorConfig *conf) {
         updated_prefix_width;  // could have been updated, so we check
 
     // moving cursor and rowoff
-    if (result == SUCCESS && numline_prefix_width) {
+    if (result == EXIT_SUCCESS && numline_prefix_width) {
         conf->cx = numline_prefix_width + current_row->indentation;
         conf->cy++;
         if (conf->cy >= conf->rowoff + conf->screen_rows) {

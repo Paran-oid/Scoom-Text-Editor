@@ -1,6 +1,7 @@
 #include <stdlib.h>
 
 #include "config.h"
+#include "core.h"
 #include "file.h"
 #include "input.h"
 #include "render.h"
@@ -8,11 +9,11 @@
 
 int main(int argc, char* argv[]) {
     struct EditorConfig* conf = malloc(sizeof(struct EditorConfig));
-    if (!conf) return OUT_OF_MEMORY;
+    if (!conf) die("conf malloc failed");
     if (argc >= 2) {
-        if (editor_open(conf, argv[1]) != SUCCESS) {
+        if (editor_open(conf, argv[1]) != EXIT_SUCCESS) {
             conf_destroy(conf);
-            return INVALID_ARG;
+            exit(EXIT_FAILURE);
         }
     }
 
@@ -21,5 +22,5 @@ int main(int argc, char* argv[]) {
     free(conf);
     g_conf = NULL;
 
-    exit(SUCCESS);
+    exit(EXIT_SUCCESS);
 }

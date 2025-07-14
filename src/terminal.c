@@ -111,7 +111,7 @@ void term_create(struct EditorConfig* conf) {
 
 void term_exit(int sig __attribute__((unused))) {
     cleanup();
-    exit(SUCCESS);
+    exit(EXIT_SUCCESS);
 }
 
 int term_get_window_size(struct EditorConfig* conf, int* rows, int* cols) {
@@ -130,7 +130,7 @@ int term_get_window_size(struct EditorConfig* conf, int* rows, int* cols) {
     } else {
         conf->screen_cols = ws.ws_col;
         conf->screen_rows = ws.ws_row;
-        return SUCCESS;
+        return EXIT_SUCCESS;
     }
 }
 
@@ -151,5 +151,5 @@ int term_get_cursor_position(int* rows, int* cols) {
     if (buf[0] != '\x1b' || buf[1] != '[') return -1;
     if (sscanf(&buf[2], "%d;%d", rows, cols) != 2) return -1;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }

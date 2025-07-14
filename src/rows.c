@@ -293,67 +293,70 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
                       size_t* len) {
     int numline_offset = editor_row_numline_calculate(row);
     int indent = row->indentation;  // modified indentation (if needed)
-    char language_indent_start = conf->syntax->indent_start;
-    char language_indent_end = conf->syntax->indent_end;
 
-    char buf_indent_start[2] = {language_indent_start, '\0'};
-    char buf_indent_end[2] = {language_indent_end, '\0'};
+    if (conf->syntax) {
+        char language_indent_start = conf->syntax->indent_start;
+        char language_indent_end = conf->syntax->indent_end;
 
-    bool in_string = false;
+        char buf_indent_start[2] = {language_indent_start, '\0'};
+        char buf_indent_end[2] = {language_indent_end, '\0'};
 
-    // stack will work great to know if an indentation is essential
+        bool in_string = false;
 
-    Stack* s = malloc(sizeof(Stack));
-    stack_create(s, NULL, free);
+        // stack will work great to know if an indentation is essential
 
-    for (size_t i = 0; i < (size_t)conf->cx - numline_offset; i++) {
-        char c = row->chars[i];
+        Stack* s = malloc(sizeof(Stack));
+        stack_create(s, NULL, free);
 
-        if (c == '"' && (i == 0 || row->chars[i - 1] != '\\')) {
-            in_string = !in_string;
-            continue;
-        }
-        if (!in_string) {
-            char* data;
-            // handle languages who indent with closing brackets
-            if (language_indent_end) {
-                if (c == language_indent_start) {
-                    data = strdup(buf_indent_start);
-                    stack_push(s, data);
-                } else if (c == language_indent_end) {
-                    char* peaked = stack_peek(s);
-                    void* ptr;
-                    if (peaked && strcmp(peaked, buf_indent_start) == 0) {
-                        stack_pop(s, &ptr);
-                        free(ptr);
-                    } else {
-                        data = strdup(buf_indent_end);
+        for (size_t i = 0; i < (size_t)conf->cx - numline_offset; i++) {
+            char c = row->chars[i];
+
+            if (c == '"' && (i == 0 || row->chars[i - 1] != '\\')) {
+                in_string = !in_string;
+                continue;
+            }
+            if (!in_string) {
+                char* data;
+                // handle languages who indent with closing brackets
+                if (language_indent_end) {
+                    if (c == language_indent_start) {
+                        data = strdup(buf_indent_start);
+                        stack_push(s, data);
+                    } else if (c == language_indent_end) {
+                        char* peaked = stack_peek(s);
+                        void* ptr;
+                        if (peaked && strcmp(peaked, buf_indent_start) == 0) {
+                            stack_pop(s, &ptr);
+                            free(ptr);
+                        } else {
+                            data = strdup(buf_indent_end);
+                            stack_push(s, data);
+                        }
+                    }
+                } else {
+                    if (c == language_indent_start) {
+                        data = strdup(buf_indent_start);
                         stack_push(s, data);
                     }
                 }
-            } else {
-                if (c == language_indent_start) {
-                    data = strdup(buf_indent_start);
-                    stack_push(s, data);
-                }
             }
         }
+
+        /*
+            If we encounter an open bracket we increase
+            identation, else we decrease it
+        */
+
+        ListNode* curr = s->head;
+        while (curr != NULL) {
+            char* data = (char*)curr->data;
+            *data == language_indent_start ? indent++ : indent--;
+            curr = curr->next;
+        }
+
+        stack_destroy(s);
+        free(s);
     }
-
-    /*
-        If we encounter an open bracket we increase
-        identation, else we decrease it
-    */
-
-    ListNode* curr = s->head;
-    while (curr != NULL) {
-        char* data = (char*)curr->data;
-        *data == language_indent_start ? indent++ : indent--;
-        curr = curr->next;
-    }
-
-    stack_destroy(s);
-    free(s);
 
     indent = indent < 0 ? 0 : indent;  // verify it's not less than 0
 
@@ -361,7 +364,7 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
     char* remainder = &row->chars[conf->cx - numline_offset];
 
     char* newline = malloc(remainder_len + indent + 1);
-    if (!newline) return OUT_OF_MEMORY;
+    if (!newline) die("");
 
     memset(newline, '\t', indent);
     memcpy(&newline[indent], remainder, remainder_len);

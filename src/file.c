@@ -22,19 +22,19 @@ int snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
 
     editor_rows_to_string(conf, &snapshot->text, &snapshot->len);
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int snapshot_destroy(struct Snapshot* snapshot) {
-    if (!snapshot) return NULL_PARAMETER;
+    if (!snapshot) die("empty snapshot passed");
     if (snapshot->text) free(snapshot->text);
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_open(struct EditorConfig* conf, const char* path) {
     free(conf->filepath);
     conf->filepath = strdup(path);
-    if (!conf->filepath) return OUT_OF_MEMORY;
+    if (!conf->filepath) die("strdup failed for path");
 
     editor_syntax_highlight_select(conf);
 
@@ -46,7 +46,7 @@ int editor_open(struct EditorConfig* conf, const char* path) {
         if (!fp) die("fopen");
 
         conf->is_dirty = 0;
-        return SUCCESS;
+        return EXIT_SUCCESS;
     };
 
     char* line = NULL;
@@ -64,14 +64,14 @@ int editor_open(struct EditorConfig* conf, const char* path) {
     free(line);
     fclose(fp);
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 int editor_run(struct EditorConfig* conf) {
     conf_create(conf);
     term_create(conf);
 
 #if DEBUG_MODE
-    if (editor_open(conf, "testo.py") != SUCCESS) {
+    if (editor_open(conf, "testo.py") != EXIT_SUCCESS) {
         conf_destroy(conf);
         return FILE_OPEN_FAILED;
     }
@@ -83,18 +83,20 @@ int editor_run(struct EditorConfig* conf) {
 
     while (1) {
         editor_refresh_screen(conf);
-        if (editor_process_key_press(conf) == EXIT_CODE) {
+        if (editor_process_key_press(conf) == EXIT_FAILURE) {
             break;
         }
     }
 
-    if (write(STDOUT_FILENO, "\x1b[2J", 4) == 0) return FILE_WRITE_FAILED;
-    if (write(STDOUT_FILENO, "\x1b[H", 3) == 0) return FILE_WRITE_FAILED;
-    return SUCCESS;
+    if (write(STDOUT_FILENO, "\x1b[2J", 4) == 0)
+        die("writing to stdout failed");
+    if (write(STDOUT_FILENO, "\x1b[H", 3) == 0) die("writing to stdout failed");
+
+    return EXIT_SUCCESS;
 }
 
 int editor_extract_filename(struct EditorConfig* conf, char** filename) {
-    if (!conf->filepath) return ERROR;
+    if (!conf->filepath) die("empty filepath in conf");
     char* file;
     int count_slash = count_char(conf->filepath, strlen(conf->filepath), '/');
     if (count_slash) {
@@ -105,12 +107,12 @@ int editor_extract_filename(struct EditorConfig* conf, char** filename) {
 
     *filename = file;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_destroy(struct EditorConfig* conf) {
     conf_destroy(conf);
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_save(struct EditorConfig* conf) {
@@ -148,11 +150,11 @@ int editor_save(struct EditorConfig* conf) {
     close(fd);
     free(file_data);
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_undo(struct EditorConfig* conf) {
-    if (stack_size(conf->stack_undo) == 0) return UNDO_STACK_EMPTY;
+    if (stack_size(conf->stack_undo) == 0) return EXIT_FAILURE;
 
     struct Snapshot *popped_snapshot, *current_snapshot;
 
@@ -166,11 +168,11 @@ int editor_undo(struct EditorConfig* conf) {
 
     editor_set_status_message(conf, "undo success!");
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_redo(struct EditorConfig* conf) {
-    if (stack_size(conf->stack_redo) == 0) return REDO_STACK_EMPTY;
+    if (stack_size(conf->stack_redo) == 0) return EXIT_FAILURE;
 
     struct Snapshot *popped_snapshot, *current_snapshot;
 
@@ -184,7 +186,7 @@ int editor_redo(struct EditorConfig* conf) {
 
     editor_set_status_message(conf, "redo success!");
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_copy(struct EditorConfig* conf) {
@@ -204,7 +206,7 @@ int editor_copy(struct EditorConfig* conf) {
         if ((bytes_size = fwrite(row->chars, sizeof(char), row->size, pipe)) ==
             0) {
             pclose(pipe);
-            return FILE_WRITE_FAILED;
+            die("fwrite to pipe failed");
         }
     } else {
         int i = sel->start_row;
@@ -223,20 +225,20 @@ int editor_copy(struct EditorConfig* conf) {
                 if ((temp = fwrite(row->chars + sel_start_col_cx, sizeof(char),
                                    row->size - sel_start_col_cx, pipe)) == 0) {
                     pclose(pipe);
-                    return FILE_WRITE_FAILED;
+                    die("fwrite to pipe failed");
                 }
 
             } else if (i == sel->end_row - 1) {
                 if ((temp = fwrite(row->chars + sel_end_col_cx, sizeof(char),
                                    row->size - sel_end_col_cx, pipe)) == 0) {
                     pclose(pipe);
-                    return FILE_WRITE_FAILED;
+                    die("fwrite to pipe failed");
                 }
             } else {
                 if ((temp = fwrite(row->chars, sizeof(char), row->size,
                                    pipe)) == 0) {
                     pclose(pipe);
-                    return FILE_WRITE_FAILED;
+                    die("fwrite to pipe failed");
                 }
             }
 
@@ -244,7 +246,7 @@ int editor_copy(struct EditorConfig* conf) {
             if (i != sel->end_row) {
                 if (fwrite("\n", sizeof(char), 1, pipe) == 0) {
                     pclose(pipe);
-                    return FILE_WRITE_FAILED;
+                    die("fwrite to pipe failed");
                 }
             }
 
@@ -255,7 +257,7 @@ int editor_copy(struct EditorConfig* conf) {
 
     editor_set_status_message(conf, "copied %d bytes into buffer", bytes_size);
     pclose(pipe);
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 /*
@@ -298,7 +300,7 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
     if (!str_remaining || !str_appended) {
         free(str_appended);
         free(str_remaining);
-        return OUT_OF_MEMORY;
+        die("malloc/strdup failed for str_append/str_remaining");
     }
 
     size_t str_remaining_size = strlen(str_remaining);
@@ -360,7 +362,7 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
 
 int editor_paste(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
-    if (!pipe) return ERROR;
+    if (!pipe) die("paste pipe failed to initialize");
 
     char** copy_buffer = NULL;
     size_t copy_buffer_size = 0;
@@ -371,54 +373,49 @@ int editor_paste(struct EditorConfig* conf) {
     while ((len = getline(&content_pasted, &size, pipe)) != -1) {
         copy_buffer =
             realloc(copy_buffer, sizeof(char*) * (copy_buffer_size + 1));
-        // make sure this gets freed later
         copy_buffer[copy_buffer_size] = strdup(content_pasted);
         if (!copy_buffer || !copy_buffer[copy_buffer_size]) {
             for (size_t i = 0; i < copy_buffer_size; i++) {
                 free(copy_buffer[i]);
             }
             free(copy_buffer);
-            return OUT_OF_MEMORY;
+            die("copy buffer failed during realloc or strdup");
         }
         copy_buffer_size++;
     }
 
     pclose(pipe);
 
-    if (copy_buffer_size == 1 && len == -1 && *content_pasted == '\0') {
-        return EMPTY_COPY_BUFFER;
-    }
-    if (conf->cy == conf->numrows) {
-        editor_insert_row(conf, conf->cy, "", 0);
-    }
+    // empty buffer so we just return
+    if (copy_buffer_size == 1 && len == -1 && *content_pasted == '\0')
+        EXIT_FAILURE;
+    if (conf->cy == conf->numrows) editor_insert_row(conf, conf->cy, "", 0);
+
     int total_bytes_pasted =
         editor_paste_buffer(conf, copy_buffer, copy_buffer_size);
 
-    if (total_bytes_pasted > -1) {
+    if (total_bytes_pasted > -1)
         editor_set_status_message(conf, "pasted %d bytes into buffer",
                                   total_bytes_pasted);
-    } else {
+    else
         editor_set_status_message(conf, "error encountered while pasting...");
-    }
 
-    for (size_t i = 0; i < copy_buffer_size; i++) {
-        free(copy_buffer[i]);
-    }
+    for (size_t i = 0; i < copy_buffer_size; i++) free(copy_buffer[i]);
 
     free(copy_buffer);
     free(content_pasted);
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_cut(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard", "w");
-    if (!pipe) return 1;
+    if (!pipe) die("pipe failed to be opened");
 
     struct Row* row = &conf->rows[conf->cy];
     if (fwrite(row->chars, sizeof(char), row->size, pipe) == 0) {
         pclose(pipe);
-        return 2;
+        die("writing to cut pipe failed");
     }
 
     size_t rowsize = row->size;
@@ -430,9 +427,7 @@ int editor_cut(struct EditorConfig* conf) {
             conf->cx = editor_row_numline_calculate(row);
             editor_delete_row(conf, conf->rowoff);
             row = &conf->rows[conf->cy];
-            if (row) {
-                conf->cx = editor_row_numline_calculate(row);
-            }
+            if (row) conf->cx = editor_row_numline_calculate(row);
         }
     };
 
@@ -444,13 +439,15 @@ int editor_cut(struct EditorConfig* conf) {
     }
 
     pclose(pipe);
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 static void editor_find_callback(struct EditorConfig* conf, char* query,
                                  int key) {
-    // direction: 1(forward) / -1(backward)
-    // last_match: -1(not found) / 1(found)
+    /*
+       direction: 1(forward) / -1(backward)
+       last_match: -1(not found) / 1(found)
+    */
 
     static int last_match = -1;
     static int direction = 1;
@@ -466,7 +463,7 @@ static void editor_find_callback(struct EditorConfig* conf, char* query,
     }
 
     if (key == '\r' || key == '\x1b') {
-        // bring back to old snapshot then return
+        // bring back to old encounter then return
         last_match = -1;
         direction = 1;
         return;
@@ -475,7 +472,7 @@ static void editor_find_callback(struct EditorConfig* conf, char* query,
     } else if (key == ARROW_LEFT || key == ARROW_UP) {
         direction = -1;
     } else {
-        // if none just bring back to old snapshot
+        // if none just bring back to old encounter
         last_match = -1;
         direction = 1;
     }
@@ -525,5 +522,5 @@ int editor_find(struct EditorConfig* conf) {
         conf->rowoff = saved_rowoff;
         conf->coloff = saved_coloff;
     }
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }

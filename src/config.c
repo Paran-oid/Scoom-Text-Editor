@@ -9,9 +9,9 @@
 #include "terminal.h"
 
 static void app_destroy(void* el) {
-    if (snapshot_destroy((struct Snapshot*)el) != SUCCESS) {
-        die("couldn't destroy snapshot");
-    }
+    if (snapshot_destroy((struct Snapshot*)el) != 0)
+        die("snapshot destroy failed");
+
     free(el);
 }
 
@@ -44,17 +44,19 @@ int conf_create(struct EditorConfig* conf) {
     conf->stack_undo = malloc(sizeof(Stack));
     conf->stack_redo = malloc(sizeof(Stack));
 
-    if (!conf->stack_undo || !conf->stack_redo) return OUT_OF_MEMORY;
+    if (!conf->stack_undo) die("malloc for stack_undo failed");
+
+    if (!conf->stack_redo) die("malloc for stack_redo failed");
 
     conf->last_time_modified = time(NULL);
+
+    if (conf->last_time_modified == -1) die("time funciton init failed");
 
     stack_create(conf->stack_undo, app_cmp, app_destroy);
     stack_create(conf->stack_redo, app_cmp, app_destroy);
 
-    if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
-        0) {
-        return -1;
-    }
+    if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) != 0)
+        die("operation of retrieving window size failed");
 
     conf->sel.start_row = -1;
     conf->sel.start_col = -1;
@@ -64,38 +66,35 @@ int conf_create(struct EditorConfig* conf) {
     // inorder to have message bar and status bar we need to decrement by 2
     conf->screen_rows -= 2;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int conf_select_update(struct EditorConfig* conf, int start_row, int end_row,
                        int start_col, int end_col) {
-    if (!conf) return NULL_PARAMETER;
+    if (!conf) die("empty conf passed");
 
     conf->sel.start_col = start_col;
     conf->sel.start_row = start_row;
     conf->sel.end_col = end_col;
     conf->sel.end_row = end_row;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int conf_to_snapshot_update(struct EditorConfig* conf,
                             struct Snapshot* snapshot) {
-    enum EditorStatus retval;
-
     conf->cx = snapshot->cx;
     conf->cy = snapshot->cy;
 
-    if ((retval = editor_string_to_rows(conf, snapshot->text)) != SUCCESS) {
-        return retval;
-    }
+    if (editor_string_to_rows(conf, snapshot->text) != EXIT_SUCCESS)
+        die("converting string to rows failed");
 
     conf->numrows = snapshot->numrows;
 
-    // after consuming it just delete it to save some memory
-    snapshot_destroy(snapshot);
+    if (snapshot_destroy(snapshot) != EXIT_SUCCESS)
+        die("snapshot destroy failed");
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int conf_destroy_rows(struct EditorConfig* conf) {
@@ -104,18 +103,18 @@ int conf_destroy_rows(struct EditorConfig* conf) {
         free(conf->rows[i].render);
         free(conf->rows[i].hl);
     }
-    free(conf->rows);
 
+    free(conf->rows);
     conf->rows = NULL;
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int conf_destroy(struct EditorConfig* conf) {
     if (conf->filepath) free(conf->filepath);
     conf->program_state = 0;
 
-    conf_destroy_rows(conf);
+    if (conf_destroy_rows(conf) != EXIT_SUCCESS) die("destroy rows failed");
 
     stack_destroy(conf->stack_redo);
     stack_destroy(conf->stack_undo);
@@ -148,7 +147,7 @@ int conf_destroy(struct EditorConfig* conf) {
 
     memset(&conf->orig_termios, 0, sizeof(conf->orig_termios));
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 enum EditorCursorAnchor conf_check_cursor_anchor(struct EditorConfig* conf,

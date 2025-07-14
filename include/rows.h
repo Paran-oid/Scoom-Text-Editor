@@ -12,10 +12,11 @@ struct Row {
     char* render;
     unsigned char* hl;  // stands for highlighting
 
-    int idx;
     size_t indentation;
     size_t size;
     size_t rsize;
+
+    int idx;
     bool hl_open_comment;
 };
 

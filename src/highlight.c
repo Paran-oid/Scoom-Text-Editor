@@ -66,19 +66,19 @@ char* JS_HL_KEYWORDS[] = {
 // HLDB: highlight database
 
 struct EditorSyntax HLDB[] = {
-    {"C", C_HL_EXTENSIONS, C_HL_KEYWORDS,
+    {"C", C_HL_EXTENSIONS, C_HL_KEYWORDS, "//", "/*", "*/",
      HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS | HL_HIGHLIGHT_COMMENTS |
          HL_HIGHLIGHT_MCOMMENTS,
-     "//", "/*", "*/", '{', '}'},
+     '{', '}'},
 
-    {"Python", PY_HL_EXTENSIONS, PY_HL_KEYWORDS,
-     HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS | HL_HIGHLIGHT_COMMENTS, "#",
-     NULL, NULL, ':', '\0'},
+    {"Python", PY_HL_EXTENSIONS, PY_HL_KEYWORDS, "#", NULL, NULL,
+     HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS | HL_HIGHLIGHT_COMMENTS, ':',
+     '\0'},
 
-    {"JavaScript", JS_HL_EXTENSIONS, JS_HL_KEYWORDS,
+    {"JavaScript", JS_HL_EXTENSIONS, JS_HL_KEYWORDS, "//", "/*", "*/",
      HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS | HL_HIGHLIGHT_COMMENTS |
          HL_HIGHLIGHT_MCOMMENTS,
-     "//", "/*", "*/", '{', '}'}};
+     '{', '}'}};
 
 #define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 
@@ -108,11 +108,9 @@ int editor_syntax_to_color_row(enum EditorHighlight hl) {
 }
 
 int editor_syntax_highlight_select(struct EditorConfig* conf) {
-    /*
-     */
-
     conf->syntax = NULL;
-    if (conf->filepath == NULL) return FILE_NOT_FOUND;
+
+    if (!conf->filepath) return EXIT_FAILURE;
 
     char* filename;
     editor_extract_filename(conf, &filename);
@@ -131,13 +129,13 @@ int editor_syntax_highlight_select(struct EditorConfig* conf) {
                 for (int filerow = 0; filerow < conf->numrows; filerow++) {
                     editor_update_syntax(conf, &conf->rows[filerow]);
                 }
-                return SUCCESS;
+                return EXIT_SUCCESS;
             }
             j++;
         }
     }
 
-    return SYNTAX_ERROR;
+    return EXIT_FAILURE;
 }
 
 static size_t handle_multiline_comment(struct Row* row, size_t i,
@@ -178,12 +176,12 @@ static size_t handle_keywords(struct Row* row, size_t i, char** keywords) {
 }
 
 int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
-    if (!row->chars) return NULL_PARAMETER;
+    if (!row->chars) return EXIT_FAILURE;
 
     row->hl = realloc(row->hl, row->rsize);
     memset(row->hl, HL_NORMAL, row->rsize);
 
-    if (!conf->syntax) return SYNTAX_ERROR;
+    if (!conf->syntax) return EXIT_FAILURE;
 
     char** keywords = conf->syntax->keywords;
 
@@ -269,5 +267,5 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
     if (changed && row->idx + 1 < conf->numrows) {
         editor_update_syntax(conf, row + 1);
     }
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
