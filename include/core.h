@@ -3,14 +3,22 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
 /* Miscellaneous */
 
+static inline void _die(const char* msg, const char* file, int line,
+                        const char* func) {
+    fprintf(stderr, "[%s:%d in %s] \r\nFatal: %s\r\n", file, line, func, msg);
+    exit(EXIT_FAILURE);
+}
+#define die(msg) (_die(msg, __FILE__, __LINE__, __func__))
+
 void process_init(void* (*func)(void*));
-void die(const char* s);
 char closing_paren(char c);
 
 /* String and Char operations*/

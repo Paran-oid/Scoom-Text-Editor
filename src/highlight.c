@@ -113,7 +113,8 @@ int editor_syntax_highlight_select(struct EditorConfig* conf) {
     if (!conf->filepath) return EXIT_FAILURE;
 
     char* filename;
-    editor_extract_filename(conf, &filename);
+    if (editor_extract_filename(conf, &filename))
+        die("extracting filename failed");
     const char* ext = strrchr(filename, '.');
 
     for (size_t i = 0; i < HLDB_ENTRIES; i++) {
@@ -137,6 +138,11 @@ int editor_syntax_highlight_select(struct EditorConfig* conf) {
 
     return EXIT_FAILURE;
 }
+
+/*
+    in the upcoming static functions we return numbers because each of these
+    returns return how much to step
+*/
 
 static size_t handle_multiline_comment(struct Row* row, size_t i,
                                        const char* mce, size_t mce_len,

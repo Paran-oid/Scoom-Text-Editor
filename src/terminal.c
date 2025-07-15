@@ -10,23 +10,21 @@
 
 #include "config.h"
 #include "core.h"
+#include "file.h"
 
 // Any needed info can be found on termios.h
 // TCSAFLUSH: flushes before leaving the program
 
+struct termios orig_termios;
+
 static void term_size_flag_update(int sig) {
     (void)sig;
-    if (g_conf) {
-        g_conf->resize_needed = 1;
-    }
+    // if (g_conf) g_conf->resize_needed = 1;
 }
 
 static void cleanup(void) {
-    if (!g_conf ||
-        tcsetattr(STDIN_FILENO, TCSAFLUSH,
-                  &((struct EditorConfig*)g_conf)->orig_termios) == -1) {
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1)
         die("tcsetattr");
-    }
 
 #if SCROLL_DISABLE
     // Show terminal scrollbar
@@ -46,34 +44,27 @@ static void cleanup(void) {
 #endif
 }
 
-void term_create(struct EditorConfig* conf) {
-    if (tcgetattr(STDIN_FILENO, &conf->orig_termios) == -1) {
-        die("tcgetattr");
-    }
-
-    /*
-        Since you can't pass any parameter for a function pointer in atexit,
-       I decided to create a g_conf void* pointer in which I will pass the
-       conf so that the terminal can be reset. Risky but possible
-    */
-    g_conf = malloc(sizeof(struct EditorConfig));
-    memcpy(g_conf, conf, sizeof(struct EditorConfig));
+void term_create(void) {
     atexit(cleanup);
 
-    conf->orig_termios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-    conf->orig_termios.c_oflag &= ~(OPOST);
-    conf->orig_termios.c_iflag &= ~(IXON | ICRNL);
-    conf->orig_termios.c_cflag |= (CS8);
-    conf->orig_termios.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
+    struct termios raw;
+    if (tcgetattr(STDIN_FILENO, &orig_termios) == -1) die("tcgetattr");
+    raw = orig_termios;
 
-    // return 0 if nothing entered
-    conf->orig_termios.c_cc[VMIN] = 0;
-    // return after 100 ms into output buffer
-    conf->orig_termios.c_cc[VTIME] = 1;
+    raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    raw.c_oflag &= ~(OPOST);
+    raw.c_cflag |= (CS8);
+    raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
+    raw.c_cc[VMIN] = 0;
+    raw.c_cc[VTIME] = 1;
+
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) {
+        die("tcsetattr");
+    }
 
 #if SCROLL_DISABLE
     // Hide terminal's scrollbar
-    if (write(STDOUT_FILENO, "\x1b[?1049h", 9) == -1) {
+    if (write(STDOUT_FILENO, "\x1b[?1049h", 9) < 0) {
         die("couldn't hide terminal's scrollbar");
     }
 #endif
@@ -104,7 +95,7 @@ void term_create(struct EditorConfig* conf) {
 #endif
 
     // apply these settings for stdout
-    if (tcsetattr(STDOUT_FILENO, TCSAFLUSH, &conf->orig_termios) == -1) {
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1) {
         die("tcsetattr");
     }
 }

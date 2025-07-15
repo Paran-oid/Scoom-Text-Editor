@@ -56,7 +56,7 @@ int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
             conf->cy++;
             if (conf->cy >= conf->numrows - 1) {
                 conf->cy--;
-                die("unrealistic cursor dimensions");
+                return EXIT_FAILURE;
             }
             row = &conf->rows[conf->cy];
             conf->cx = numline_offset;
@@ -67,7 +67,7 @@ int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
             conf->cy--;
             if (conf->cy < 0) {
                 conf->cy = 0;
-                die("unrealistic cursor dimensions");
+                return EXIT_FAILURE;
             }
             row = &conf->rows[conf->cy];
             conf->cx = row->size != 0 ? (int)row->size - 1 : numline_offset;
@@ -135,7 +135,7 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
             }
             break;
         default:
-            die("unrealistic cursor dimensions");
+            die("invalid input...");
     }
     row = (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     if (row && conf->cx > (int)row->size + numline_offset) {
@@ -347,8 +347,9 @@ int editor_process_key_press(struct EditorConfig *conf) {
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
     int c = editor_read_key(conf);
-    int times = conf->screen_rows;  // this will be needed in case of page
-                                    // up or down basically
+
+    // times var will be needed to page up or down
+    int times = conf->screen_rows;
 
     time_t current_time = time(NULL);
     double time_elapsed = difftime(current_time, conf->last_time_modified);
@@ -468,7 +469,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
                 quit_times--;
                 return EXIT_FAILURE;
             }
-            return EXIT_SUCCESS;
+            return EXIT_LOOP_CODE;
             break;
         case CTRL_KEY('l'):
         case '\x1b':

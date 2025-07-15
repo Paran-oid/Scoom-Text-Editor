@@ -6,9 +6,9 @@ struct EditorConfig;
 #define SCROLL_DISABLE 0
 #define MOUSE_REPORTING 0
 
-__attribute__((unused)) static struct EditorConfig* g_conf;
+extern struct termios orig_termios;
 
-void term_create(struct EditorConfig* conf);
+void term_create(void);
 void term_exit(int sig);
 
 int term_get_window_size(struct EditorConfig* conf, int* rows, int* cols);

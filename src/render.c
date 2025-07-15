@@ -24,11 +24,14 @@ char *editor_prompt(struct EditorConfig *conf, const char *prompt,
     size_t bufsize = 128;
     size_t buflen = 0;
     char *buf = malloc(bufsize);
+    if (!buf) die("buf malloc failed");
     buf[0] = '\0';
 
     while (1) {
-        editor_set_status_message(conf, prompt, buf);
-        editor_refresh_screen(conf);
+        if (editor_set_status_message(conf, prompt, buf) == EXIT_FAILURE)
+            die("editor set message failed...");
+        if (editor_refresh_screen(conf) == EXIT_FAILURE)
+            die("editor refresh screen failed");
         int c = editor_read_key(conf);
 
         if (c == '\r') {
@@ -71,7 +74,7 @@ int editor_set_status_message(struct EditorConfig *conf, const char *fmt, ...) {
     va_end(ap);
     conf->sbuf_time = time(NULL);
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 /***  Screen display and rendering section ***/
@@ -103,11 +106,11 @@ int editor_refresh_screen(struct EditorConfig *conf) {
     ab_append(&ab, buf, strlen(buf));
 
     if (write(STDOUT_FILENO, ab.buf, ab.len) == 0) {
-        return FILE_WRITE_FAILED;
+        die("couldn't write to stdout");
     }
 
     ab_free(&ab);
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_draw_messagebar(struct EditorConfig *conf, struct ABuf *ab) {
@@ -119,7 +122,7 @@ int editor_draw_messagebar(struct EditorConfig *conf, struct ABuf *ab) {
     if (message_len && time(NULL) - conf->sbuf_time < 5)
         ab_append(ab, conf->status_msg, message_len);
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_draw_statusbar(struct EditorConfig *conf, struct ABuf *ab) {
@@ -158,7 +161,7 @@ int editor_draw_statusbar(struct EditorConfig *conf, struct ABuf *ab) {
     ab_append(ab, "\r\n", 2);
     ab_append(ab, "\x1b[m", 3);  // returns to normal
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 static int helper_welcome_screen(struct EditorConfig *conf, struct ABuf *ab) {
@@ -178,7 +181,7 @@ static int helper_welcome_screen(struct EditorConfig *conf, struct ABuf *ab) {
 
     ab_append(ab, buf, welcome_len);
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
@@ -316,11 +319,11 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
         ab_append(ab, "\r\n", 2);
     }
 
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_scroll(struct EditorConfig *conf) {
-    if (conf->numrows == 0) return EMPTY_BUFFER;
+    if (conf->numrows == 0) return EXIT_FAILURE;
 
     if (conf->resize_needed) {
         term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols);
@@ -350,5 +353,5 @@ int editor_scroll(struct EditorConfig *conf) {
     } else if (conf->cy >= conf->rowoff + conf->screen_rows) {
         conf->rowoff = conf->cy - conf->screen_rows + 1;
     }
-    return SUCCESS;
+    return EXIT_SUCCESS;
 }

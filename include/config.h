@@ -6,10 +6,14 @@
 #include <termios.h>
 #include <time.h>
 
-#define SCOOM_VERSION 0.76
+#define DEBUG_MODE 1
+
+#define SCOOM_VERSION 0.89
 #define TAB_SIZE 4
 #define QUIT_TIMES 3
 #define IDENT_SIZE 4
+
+#define EXIT_LOOP_CODE 5
 
 struct Snapshot;
 struct DList;
@@ -49,8 +53,7 @@ struct EditorConfig {
     // char array (80 bytes)
     char status_msg[80];
 
-    // Terminal config (termios is usually ~60 bytes, well-aligned)
-    struct termios orig_termios;
+    // select related
     struct EditorCursorSelect sel;
 };
 

@@ -20,7 +20,9 @@ int snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
     snapshot->cy = conf->cy;
     snapshot->numrows = conf->numrows;
 
-    editor_rows_to_string(conf, &snapshot->text, &snapshot->len);
+    if (editor_rows_to_string(conf, &snapshot->text, &snapshot->len) ==
+        EXIT_FAILURE)
+        return EXIT_FAILURE;
 
     return EXIT_SUCCESS;
 }
@@ -43,7 +45,7 @@ int editor_open(struct EditorConfig* conf, const char* path) {
     // create the file if it doesn't exist
     if (!fp) {
         fp = fopen(path, "w");
-        if (!fp) die("fopen");
+        if (!fp) die("fopen failed");
 
         conf->is_dirty = 0;
         return EXIT_SUCCESS;
@@ -68,13 +70,11 @@ int editor_open(struct EditorConfig* conf, const char* path) {
 }
 int editor_run(struct EditorConfig* conf) {
     conf_create(conf);
-    term_create(conf);
+    term_create();
 
 #if DEBUG_MODE
-    if (editor_open(conf, "testo.py") != EXIT_SUCCESS) {
-        conf_destroy(conf);
-        return FILE_OPEN_FAILED;
-    }
+    if (editor_open(conf, "test.c") != EXIT_SUCCESS)
+        die("couldn't open test.c");
 
 #endif
 
@@ -83,7 +83,7 @@ int editor_run(struct EditorConfig* conf) {
 
     while (1) {
         editor_refresh_screen(conf);
-        if (editor_process_key_press(conf) == EXIT_FAILURE) {
+        if (editor_process_key_press(conf) == EXIT_LOOP_CODE) {
             break;
         }
     }
@@ -297,11 +297,8 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
 
     char* str_appended = malloc(cursor_offset + first_buffer_size + 1);
     char* str_remaining = strdup(row->chars + cursor_offset);
-    if (!str_remaining || !str_appended) {
-        free(str_appended);
-        free(str_remaining);
+    if (!str_remaining || !str_appended)
         die("malloc/strdup failed for str_append/str_remaining");
-    }
 
     size_t str_remaining_size = strlen(str_remaining);
 
@@ -378,7 +375,7 @@ int editor_paste(struct EditorConfig* conf) {
             for (size_t i = 0; i < copy_buffer_size; i++) {
                 free(copy_buffer[i]);
             }
-            free(copy_buffer);
+            pclose(pipe);
             die("copy buffer failed during realloc or strdup");
         }
         copy_buffer_size++;

@@ -10,15 +10,6 @@
 
 /* Misc */
 
-#define die(msg) (_die(msg, __FILE__, __LINE__, __func__))
-
-static inline void _die(const char* msg, const char* file, int line,
-                        const char* func) {
-    fprintf(stderr, "[%s:%d in %s] Fatal: %s\n", file, line, func, msg);
-	free(temp);
-    exit(EXIT_FAILURE);
-}
-
 // acceptable parms: {, (, [
 char closing_paren(char c) {
     switch (c) {
@@ -83,6 +74,8 @@ bool check_compound_statement(const char* str, size_t len) {
         return false;
 
     Stack* s = malloc(sizeof(Stack));
+    if (!s) die("stack 's' malloc failed...");
+
     stack_create(s, NULL, free);
 
     bool in_string = false;
@@ -98,6 +91,8 @@ bool check_compound_statement(const char* str, size_t len) {
             char* data;
             if (c == '{') {
                 data = strdup("{");
+                if (!data) die("data strdup failed");
+
                 stack_push(s, data);
             } else if (c == '}') {
                 char* peaked = stack_peek(s);
@@ -107,6 +102,8 @@ bool check_compound_statement(const char* str, size_t len) {
                     free(ptr);
                 } else {
                     data = strdup("}");
+                    if (!data) die("data strdup failed");
+
                     stack_push(s, data);
                 }
             }

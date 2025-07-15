@@ -8,10 +8,11 @@
 #include "rows.h"
 #include "terminal.h"
 
+struct EditorConfig* conf = NULL;
+
 static void app_destroy(void* el) {
     if (snapshot_destroy((struct Snapshot*)el) != 0)
         die("snapshot destroy failed");
-
     free(el);
 }
 
@@ -44,19 +45,23 @@ int conf_create(struct EditorConfig* conf) {
     conf->stack_undo = malloc(sizeof(Stack));
     conf->stack_redo = malloc(sizeof(Stack));
 
-    if (!conf->stack_undo) die("malloc for stack_undo failed");
-
-    if (!conf->stack_redo) die("malloc for stack_redo failed");
+    if (!conf->stack_undo || !conf->stack_redo)
+        die("malloc for stack_undo or stack_redo failed");
 
     conf->last_time_modified = time(NULL);
-
     if (conf->last_time_modified == -1) die("time funciton init failed");
 
     stack_create(conf->stack_undo, app_cmp, app_destroy);
     stack_create(conf->stack_redo, app_cmp, app_destroy);
 
-    if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) != 0)
+    if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
+        0) {
         die("operation of retrieving window size failed");
+        stack_destroy(conf->stack_redo);
+        stack_destroy(conf->stack_undo);
+        free(conf->stack_redo);
+        free(conf->stack_undo);
+    }
 
     conf->sel.start_row = -1;
     conf->sel.start_col = -1;
@@ -145,7 +150,8 @@ int conf_destroy(struct EditorConfig* conf) {
     conf->sel.end_row = -1;
     conf->sel.end_col = -1;
 
-    memset(&conf->orig_termios, 0, sizeof(conf->orig_termios));
+    free(conf->stack_redo);
+    free(conf->stack_undo);
 
     return EXIT_SUCCESS;
 }

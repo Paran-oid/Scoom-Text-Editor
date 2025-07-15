@@ -19,12 +19,10 @@ int editor_free_row(struct Row* row) {
 
 int editor_insert_row_char(struct EditorConfig* conf, struct Row* row, int at,
                            int c) {
-    if (at < 0 || (size_t)at > row->size) {
-        return CURSOR_OUT_OF_BOUNDS;
-    }
+    if (at < 0 || (size_t)at > row->size) die("invalid cursor dimensions");
     // n stands for new for now
     char* new_chars = realloc(row->chars, row->size + 2);
-    if (!new_chars) return OUT_OF_MEMORY;
+    if (!new_chars) die("new_chars realloc failed");
     row->chars = new_chars;
 
     memmove(row->chars + at + 1, row->chars + at, row->size - at);
@@ -32,13 +30,14 @@ int editor_insert_row_char(struct EditorConfig* conf, struct Row* row, int at,
 
     row->size++;
     row->chars[row->size] = '\0';
-    editor_update_row(conf, row);
+    if (editor_update_row(conf, row) == EXIT_FAILURE)
+        die("editor update row failed");
 
     return EXIT_SUCCESS;
 }
 
 int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
-    if (at < 0 || (size_t)at >= row->size) return CURSOR_OUT_OF_BOUNDS;
+    if (at < 0 || (size_t)at >= row->size) return EXIT_FAILURE;
 
     memmove(&row->chars[at], &row->chars[at + 1], row->size - at - 1);
     row->size--;
@@ -46,7 +45,8 @@ int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
     row->chars = realloc(row->chars, row->size + 1);
     row->chars[row->size] = '\0';
 
-    editor_update_row(conf, row);
+    if (editor_update_row(conf, row) == EXIT_FAILURE)
+        die("editor update row failed");
     conf->is_dirty = 1;
 
     return EXIT_SUCCESS;
@@ -56,7 +56,7 @@ int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
 //* row pointer or something
 int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
                       size_t content_len) {
-    if (at < 0 || at > conf->numrows) return CURSOR_OUT_OF_BOUNDS;
+    if (at < 0 || at > conf->numrows) return EXIT_FAILURE;
 
     conf->rows = realloc(conf->rows, sizeof(struct Row) * (conf->numrows + 1));
 
@@ -86,7 +86,8 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
     conf->numrows++;
 
     conf->is_dirty = 1;
-    editor_update_row(conf, &conf->rows[at]);
+    if (editor_update_row(conf, &conf->rows[at]) == EXIT_FAILURE)
+        die("editor update row failed");
 
     return EXIT_SUCCESS;
 }
@@ -110,6 +111,7 @@ int editor_update_row(struct EditorConfig* conf, struct Row* row) {
         Because the tab is already counted as 1 character in row->size
     */
     row->render = malloc(row->size + tabs * (TAB_SIZE - 1) + 1);
+    if (!row->render) die("row render malloc failed");
 
     for (size_t j = 0; j < row->size; j++) {
         /*
@@ -134,8 +136,9 @@ int editor_update_row(struct EditorConfig* conf, struct Row* row) {
 }
 
 int editor_delete_row(struct EditorConfig* conf, int at) {
-    if (at < 0 || at > conf->numrows) return CURSOR_OUT_OF_BOUNDS;
-    editor_free_row(&conf->rows[at]);
+    if (at < 0 || at > conf->numrows) return EXIT_FAILURE;
+    if (editor_free_row(&conf->rows[at]) == EXIT_FAILURE)
+        die("editor free row failed");
     memmove(&conf->rows[at], &conf->rows[at + 1],
             sizeof(struct Row) * (conf->numrows - at - 1));
     for (int j = at; j < conf->numrows - 1; j++) {
@@ -163,14 +166,14 @@ int editor_insert_char(struct EditorConfig* conf, int c) {
 }
 
 int editor_delete_char(struct EditorConfig* conf) {
-    if (conf->numrows == 0) return EMPTY_BUFFER;
+    if (conf->numrows == 0) return EXIT_FAILURE;
 
     int numline_offset = editor_row_numline_calculate(&conf->rows[conf->cy]);
 
     // make sure we're not at end of file or at beginning of first line
     if (conf->cy == conf->numrows ||
         (conf->cx == numline_offset && conf->cy == 0))
-        return CURSOR_OUT_OF_BOUNDS;
+        return EXIT_FAILURE;
 
     if (conf->cx > numline_offset) {
         int at = conf->cx - numline_offset;
@@ -180,7 +183,9 @@ int editor_delete_char(struct EditorConfig* conf) {
         if (check_is_paranthesis(currchar)) {
             char next_char = row->chars[at];
             if (closing_paren(currchar) == next_char) {
-                editor_delete_row_char(conf, &conf->rows[conf->cy], at);
+                if (editor_delete_row_char(conf, &conf->rows[conf->cy], at) ==
+                    EXIT_FAILURE)
+                    die("editor delete row char operation failed");
             }
         }
 
@@ -189,13 +194,15 @@ int editor_delete_char(struct EditorConfig* conf) {
         return res;
     } else {
         conf->cx = conf->rows[conf->cy - 1].size + numline_offset;
-        editor_row_append_string(conf, &conf->rows[conf->cy - 1],
-                                 conf->rows[conf->cy].chars,
-                                 conf->rows[conf->cy].size);
-        editor_delete_row(conf, conf->cy);
+        if (editor_row_append_string(conf, &conf->rows[conf->cy - 1],
+                                     conf->rows[conf->cy].chars,
+                                     conf->rows[conf->cy].size) == EXIT_FAILURE)
+            die("editor row append string operation failed");
+        if (editor_delete_row(conf, conf->cy) == EXIT_FAILURE)
+            die("editor delete row operation failed");
         conf->cy--;
     }
-    return ERROR;
+    return EXIT_FAILURE;
 }
 
 int editor_rows_to_string(struct EditorConfig* conf, char** result,
@@ -210,7 +217,7 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
         }
     }
 
-    if (total_size == 0) return EMPTY_BUFFER;
+    if (total_size == 0) return EXIT_FAILURE;
 
     *result_size = total_size;
     char* file_data = malloc(total_size + 1);
@@ -237,7 +244,8 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
 }
 
 int editor_string_to_rows(struct EditorConfig* conf, char* buffer) {
-    conf_destroy_rows(conf);
+    if (conf_destroy_rows(conf) == EXIT_FAILURE)
+        die("conf destroy rows operation failed");
 
     char* ptr = buffer;
     size_t index = 0;
@@ -249,10 +257,12 @@ int editor_string_to_rows(struct EditorConfig* conf, char* buffer) {
 
         size_t len = ptr - start;
         char* buf = malloc(len + 1);
+        if (!buf) die("buf malloc failed");
         memcpy(buf, start, len);
         buf[len] = '\0';
 
-        editor_insert_row(conf, index++, buf, len);
+        if (editor_insert_row(conf, index++, buf, len) == EXIT_FAILURE)
+            die("editor insert row failed");
         free(buf);
 
         if (*ptr == '\n') ptr++;
@@ -373,7 +383,7 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
     *data = newline;
     *len = remainder_len + indent;
 
-    return EXIT_EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 int editor_update_rx_cx(struct Row* row, int rx) {
