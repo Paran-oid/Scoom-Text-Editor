@@ -15,7 +15,7 @@
 #include "rows.h"
 #include "terminal.h"
 
-int snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
+uint8_t snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
     snapshot->cx = conf->cx;
     snapshot->cy = conf->cy;
     snapshot->numrows = conf->numrows;
@@ -27,13 +27,13 @@ int snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
     return EXIT_SUCCESS;
 }
 
-int snapshot_destroy(struct Snapshot* snapshot) {
-    if (!snapshot) die("empty snapshot passed");
+uint8_t snapshot_destroy(struct Snapshot* snapshot) {
+    if (!snapshot) die("empty sna(pshot passed");
     if (snapshot->text) free(snapshot->text);
     return EXIT_SUCCESS;
 }
 
-int editor_open(struct EditorConfig* conf, const char* path) {
+uint8_t editor_open(struct EditorConfig* conf, const char* path) {
     free(conf->filepath);
     conf->filepath = strdup(path);
     if (!conf->filepath) die("strdup failed for path");
@@ -47,7 +47,7 @@ int editor_open(struct EditorConfig* conf, const char* path) {
         fp = fopen(path, "w");
         if (!fp) die("fopen failed");
 
-        conf->is_dirty = 0;
+        conf->flags.is_dirty = 0;
         return EXIT_SUCCESS;
     };
 
@@ -62,13 +62,14 @@ int editor_open(struct EditorConfig* conf, const char* path) {
         editor_insert_row(conf, conf->numrows, line, line_len);
     }
 
-    conf->is_dirty = 0;
+    conf->flags.is_dirty = 0;
     free(line);
     fclose(fp);
 
     return EXIT_SUCCESS;
 }
-int editor_run(struct EditorConfig* conf) {
+uint8_t editor_run(struct EditorConfig* conf) {
+    g_conf = conf;
     conf_create(conf);
     term_create();
 
@@ -95,10 +96,11 @@ int editor_run(struct EditorConfig* conf) {
     return EXIT_SUCCESS;
 }
 
-int editor_extract_filename(struct EditorConfig* conf, char** filename) {
+uint8_t editor_extract_filename(struct EditorConfig* conf, char** filename) {
     if (!conf->filepath) die("empty filepath in conf");
     char* file;
-    int count_slash = count_char(conf->filepath, strlen(conf->filepath), '/');
+    uint32_t count_slash =
+        count_char(conf->filepath, strlen(conf->filepath), '/');
     if (count_slash) {
         file = strrchr(conf->filepath, '/');
     } else {
@@ -110,12 +112,12 @@ int editor_extract_filename(struct EditorConfig* conf, char** filename) {
     return EXIT_SUCCESS;
 }
 
-int editor_destroy(struct EditorConfig* conf) {
+uint8_t editor_destroy(struct EditorConfig* conf) {
     conf_destroy(conf);
     return EXIT_SUCCESS;
 }
 
-int editor_save(struct EditorConfig* conf) {
+uint8_t editor_save(struct EditorConfig* conf) {
     if (!conf->filepath) {
         conf->filepath = editor_prompt(conf, "Save as: %s", NULL);
         if (!conf->filepath) {
@@ -129,9 +131,11 @@ int editor_save(struct EditorConfig* conf) {
     char* file_data;
     size_t file_data_size;
 
-    editor_rows_to_string(conf, &file_data, &file_data_size);
+    if (editor_rows_to_string(conf, &file_data, &file_data_size) ==
+        EXIT_FAILURE)
+        die("couldn't transform rows into a string");
 
-    int fd = open(conf->filepath, O_CREAT | O_WRONLY, 0644);
+    int32_t fd = open(conf->filepath, O_CREAT | O_WRONLY, 0644);
 
     if (!fd) return -1;
 
@@ -146,14 +150,14 @@ int editor_save(struct EditorConfig* conf) {
         editor_set_status_message(conf, "saved empty file", file_data_size);
     }
 
-    conf->is_dirty = 0;
+    conf->flags.is_dirty = 0;
     close(fd);
     free(file_data);
 
     return EXIT_SUCCESS;
 }
 
-int editor_undo(struct EditorConfig* conf) {
+uint8_t editor_undo(struct EditorConfig* conf) {
     if (stack_size(conf->stack_undo) == 0) return EXIT_FAILURE;
 
     struct Snapshot *popped_snapshot, *current_snapshot;
@@ -171,7 +175,7 @@ int editor_undo(struct EditorConfig* conf) {
     return EXIT_SUCCESS;
 }
 
-int editor_redo(struct EditorConfig* conf) {
+uint8_t editor_redo(struct EditorConfig* conf) {
     if (stack_size(conf->stack_redo) == 0) return EXIT_FAILURE;
 
     struct Snapshot *popped_snapshot, *current_snapshot;
@@ -189,7 +193,7 @@ int editor_redo(struct EditorConfig* conf) {
     return EXIT_SUCCESS;
 }
 
-int editor_copy(struct EditorConfig* conf) {
+uint8_t editor_copy(struct EditorConfig* conf) {
     /*
             Sadly just linux compatible at the moment...
     */
@@ -199,7 +203,7 @@ int editor_copy(struct EditorConfig* conf) {
 
     struct EditorCursorSelect* sel = &conf->sel;
 
-    unsigned long bytes_size = 0;
+    uint64_t bytes_size = 0;
 
     if (!sel->active) {
         struct Row* row = &conf->rows[conf->cy];
@@ -209,19 +213,25 @@ int editor_copy(struct EditorConfig* conf) {
             die("fwrite to pipe failed");
         }
     } else {
-        int i = sel->start_row;
-        struct Row* row = &conf->rows[i];
-        int numline_offset = editor_row_numline_calculate(row);
+        if (sel->start_col == -1 || sel->start_row == -1 ||
+            sel->end_row == -1 || sel->end_col == -1)
+            die("selected text was expected");
 
-        int sel_start_col_cx =
+        uint32_t i = sel->start_row;
+        struct Row* row = &conf->rows[i];
+
+        uint32_t numline_offset = editor_row_numline_calculate(row);
+
+        int32_t sel_start_col_cx =
             editor_update_rx_cx(row, sel->start_row - numline_offset);
-        int sel_end_col_cx =
-            editor_update_rx_cx(row, sel->end_row - -numline_offset);
+        int32_t sel_end_col_cx =
+            editor_update_rx_cx(row, sel->end_row - numline_offset);
 
         while (i <= sel->end_row) {
             row = &conf->rows[i];
-            int temp = 0;
+            int32_t temp = 0;
             if (i == sel->start_row) {
+                // TODO: this check could be wrong, fix it if that is the case
                 if ((temp = fwrite(row->chars + sel_start_col_cx, sizeof(char),
                                    row->size - sel_start_col_cx, pipe)) == 0) {
                     pclose(pipe);

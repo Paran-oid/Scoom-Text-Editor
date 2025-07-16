@@ -1,6 +1,7 @@
 #ifndef HIGHLIGHT_H
 #define HIGHLIGHT_H
 
+#include <stdint.h>
 struct Row;
 struct EditorConfig;
 
@@ -23,14 +24,14 @@ struct EditorSyntax {
     char* multiline_comment_start;
     char* multiline_comment_end;
 
-    int flags;
+    uint8_t flags;
 
     char indent_start;
     char indent_end;
 };
 
-int editor_syntax_highlight_select(struct EditorConfig* conf);
-int editor_syntax_to_color_row(const enum EditorHighlight row);
-int editor_update_syntax(struct EditorConfig* conf, struct Row* row);
+uint8_t editor_syntax_highlight_select(struct EditorConfig* conf);
+uint8_t editor_syntax_to_color_row(enum EditorHighlight row);
+uint8_t editor_update_syntax(struct EditorConfig* conf, struct Row* row);
 
 #endif

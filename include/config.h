@@ -3,6 +3,7 @@
 
 #include <stack.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <termios.h>
 #include <time.h>
 
@@ -13,47 +14,45 @@
 #define QUIT_TIMES 3
 #define IDENT_SIZE 4
 
-#define EXIT_LOOP_CODE 5
+#define EXIT_LOOP_CODE 0xA1
+#define INTERRUPT_ENCOUNTERED 0xA2
 
 struct Snapshot;
 struct DList;
 
 struct EditorCursorSelect {
-    int active;
-    int start_row;
-    int start_col;
-    int end_row;
-    int end_col;
+    uint8_t active : 1;
+    int32_t start_row;
+    int32_t start_col;
+    int32_t end_row;
+    int32_t end_col;
+};
+
+struct EditorConfigFlags {
+    uint8_t is_dirty : 1;
+    uint8_t resize_needed : 1;
+    uint8_t program_state : 1;  // 1-started or 0-finished
 };
 
 struct EditorConfig {
-    // Pointers (8 bytes each on 64-bit)
     char* filepath;
     struct Row* rows;
     struct EditorSyntax* syntax;
     Stack* stack_undo;
     Stack* stack_redo;
 
-    // time_t (usually 8 bytes)
     time_t sbuf_time;
     time_t last_time_modified;
 
-    // Integers (4 bytes each)
-    int cx, cy;  // cursor
-    int rx;      // rendered x (for tabs)
-    int screen_rows, screen_cols;
-    int numrows;
-    int rowoff, coloff;
+    uint32_t cx, cy;
+    uint32_t rx;
+    uint32_t screen_rows, screen_cols;
+    uint32_t rowoff, coloff;
+    size_t numrows;
 
-    // bitfields packed into one 4-byte int
-    unsigned int is_dirty : 1;
-    unsigned int resize_needed : 1;
-    unsigned int program_state : 1;  // 1-started or 0-finished
-
-    // char array (80 bytes)
     char status_msg[80];
 
-    // select related
+    struct EditorConfigFlags flags;
     struct EditorCursorSelect sel;
 };
 
@@ -64,16 +63,18 @@ enum EditorCursorAnchor {
     CURSOR_ANCHOR_INVALID
 };
 
-int conf_create(struct EditorConfig* conf);
-int conf_destroy(struct EditorConfig* conf);
+extern struct EditorConfig* g_conf;
 
-int conf_select_update(struct EditorConfig* conf, int start_row, int end_row,
-                       int start_col, int end_col);
-int conf_to_snapshot_update(struct EditorConfig* conf,
-                            struct Snapshot* snapshot);
-int conf_destroy_rows(struct EditorConfig* conf);
+uint8_t conf_create(struct EditorConfig* conf);
+uint8_t conf_destroy(struct EditorConfig* conf);
+
+uint8_t conf_select_update(struct EditorConfig* conf, int32_t start_row,
+                           int32_t end_row, int32_t start_col, int32_t end_col);
+uint8_t conf_to_snapshot_update(struct EditorConfig* conf,
+                                struct Snapshot* snapshot);
+uint8_t conf_destroy_rows(struct EditorConfig* conf);
 
 enum EditorCursorAnchor conf_check_cursor_anchor(struct EditorConfig* conf,
-                                                 int anchor_row,
-                                                 int anchor_col);
+                                                 int32_t anchor_row,
+                                                 int32_t anchor_col);
 #endif

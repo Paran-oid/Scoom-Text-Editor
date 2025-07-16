@@ -8,7 +8,7 @@
 #include "rows.h"
 #include "terminal.h"
 
-struct EditorConfig* conf = NULL;
+struct EditorConfig* g_conf = NULL;
 
 static void app_destroy(void* el) {
     if (snapshot_destroy((struct Snapshot*)el) != 0)
@@ -16,14 +16,14 @@ static void app_destroy(void* el) {
     free(el);
 }
 
-static int app_cmp(const void* str1, const void* str2) {
+static int32_t app_cmp(const void* str1, const void* str2) {
     return strcmp((const char*)str1, (const char*)str2);
 }
 
-int conf_create(struct EditorConfig* conf) {
+uint8_t conf_create(struct EditorConfig* conf) {
     conf->filepath = NULL;
     // this is true only when user inputs something
-    conf->program_state = 0;
+    conf->flags.program_state = 0;
 
     // status message section
     conf->status_msg[0] = '\0';
@@ -38,9 +38,9 @@ int conf_create(struct EditorConfig* conf) {
     conf->rows = NULL;
     conf->rowoff = 0;
     conf->coloff = 0;
-    conf->is_dirty = 0;
+    conf->flags.is_dirty = 0;
     conf->syntax = NULL;
-    conf->resize_needed = 0;
+    conf->flags.resize_needed = 0;
 
     conf->stack_undo = malloc(sizeof(Stack));
     conf->stack_redo = malloc(sizeof(Stack));
@@ -54,14 +54,9 @@ int conf_create(struct EditorConfig* conf) {
     stack_create(conf->stack_undo, app_cmp, app_destroy);
     stack_create(conf->stack_redo, app_cmp, app_destroy);
 
-    if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) !=
-        0) {
+    // even if it returned overflowed values it will execute die exit function
+    if (term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols) != 0)
         die("operation of retrieving window size failed");
-        stack_destroy(conf->stack_redo);
-        stack_destroy(conf->stack_undo);
-        free(conf->stack_redo);
-        free(conf->stack_undo);
-    }
 
     conf->sel.start_row = -1;
     conf->sel.start_col = -1;
@@ -74,8 +69,9 @@ int conf_create(struct EditorConfig* conf) {
     return EXIT_SUCCESS;
 }
 
-int conf_select_update(struct EditorConfig* conf, int start_row, int end_row,
-                       int start_col, int end_col) {
+uint8_t conf_select_update(struct EditorConfig* conf, int32_t start_row,
+                           int32_t end_row, int32_t start_col,
+                           int32_t end_col) {
     if (!conf) die("empty conf passed");
 
     conf->sel.start_col = start_col;
@@ -86,8 +82,8 @@ int conf_select_update(struct EditorConfig* conf, int start_row, int end_row,
     return EXIT_SUCCESS;
 }
 
-int conf_to_snapshot_update(struct EditorConfig* conf,
-                            struct Snapshot* snapshot) {
+uint8_t conf_to_snapshot_update(struct EditorConfig* conf,
+                                struct Snapshot* snapshot) {
     conf->cx = snapshot->cx;
     conf->cy = snapshot->cy;
 
@@ -102,7 +98,7 @@ int conf_to_snapshot_update(struct EditorConfig* conf,
     return EXIT_SUCCESS;
 }
 
-int conf_destroy_rows(struct EditorConfig* conf) {
+uint8_t conf_destroy_rows(struct EditorConfig* conf) {
     for (size_t i = 0; i < (size_t)conf->numrows; i++) {
         free(conf->rows[i].chars);
         free(conf->rows[i].render);
@@ -115,9 +111,9 @@ int conf_destroy_rows(struct EditorConfig* conf) {
     return EXIT_SUCCESS;
 }
 
-int conf_destroy(struct EditorConfig* conf) {
+uint8_t conf_destroy(struct EditorConfig* conf) {
     if (conf->filepath) free(conf->filepath);
-    conf->program_state = 0;
+    conf->flags.program_state = 0;
 
     if (conf_destroy_rows(conf) != EXIT_SUCCESS) die("destroy rows failed");
 
@@ -138,7 +134,7 @@ int conf_destroy(struct EditorConfig* conf) {
 
     conf->rowoff = 0;
     conf->coloff = 0;
-    conf->is_dirty = 0;
+    conf->flags.is_dirty = 0;
 
     conf->status_msg[0] = '\0';
     conf->sbuf_time = 0;
@@ -157,8 +153,8 @@ int conf_destroy(struct EditorConfig* conf) {
 }
 
 enum EditorCursorAnchor conf_check_cursor_anchor(struct EditorConfig* conf,
-                                                 int anchor_row,
-                                                 int anchor_col) {
+                                                 int32_t anchor_row,
+                                                 int32_t anchor_col) {
     if (conf->cy < anchor_row) {
         return CURSOR_ANCHOR_BEFORE;
     } else if (conf->cy == anchor_row && conf->rx < anchor_col) {

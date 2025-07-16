@@ -19,7 +19,7 @@ int editor_free_row(struct Row* row) {
 
 int editor_insert_row_char(struct EditorConfig* conf, struct Row* row, int at,
                            int c) {
-    if (at < 0 || (size_t)at > row->size) die("invalid cursor dimensions");
+    if (at < 0 || (size_t)at > row->size) return EXIT_FAILURE;
     // n stands for new for now
     char* new_chars = realloc(row->chars, row->size + 2);
     if (!new_chars) die("new_chars realloc failed");
@@ -47,7 +47,7 @@ int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
 
     if (editor_update_row(conf, row) == EXIT_FAILURE)
         die("editor update row failed");
-    conf->is_dirty = 1;
+    conf->flags.is_dirty = 1;
 
     return EXIT_SUCCESS;
 }
@@ -81,11 +81,11 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
     row->render = NULL;
     row->rsize = 0;
     row->hl = NULL;
-    row->hl_open_comment = false;
+    row->hl_open_comment = 0;
 
     conf->numrows++;
 
-    conf->is_dirty = 1;
+    conf->flags.is_dirty = 1;
     if (editor_update_row(conf, &conf->rows[at]) == EXIT_FAILURE)
         die("editor update row failed");
 
@@ -144,9 +144,10 @@ int editor_delete_row(struct EditorConfig* conf, int at) {
     for (int j = at; j < conf->numrows - 1; j++) {
         conf->rows[j].idx--;
     }
-    conf->numrows--;
+
+    if (conf->numrows != 0) conf->numrows--;
     conf->rows = realloc(conf->rows, sizeof(struct Row) * conf->numrows);
-    conf->is_dirty = 1;
+    conf->flags.is_dirty = 1;
     return EXIT_SUCCESS;
 }
 
@@ -156,7 +157,7 @@ int editor_insert_char(struct EditorConfig* conf, int c) {
 
     int numline_offset = editor_row_numline_calculate(&conf->rows[conf->cy]);
 
-    conf->is_dirty = 1;
+    conf->flags.is_dirty = 1;
     // got to make sure res is correctly calculated because cx could
     // accidentally touch the numbers part
     int res = editor_insert_row_char(conf, &conf->rows[conf->cy],
@@ -190,7 +191,8 @@ int editor_delete_char(struct EditorConfig* conf) {
         }
 
         int res = editor_delete_row_char(conf, &conf->rows[conf->cy], at - 1);
-        conf->cx--;
+        if (!conf->cx) conf->cx--;
+
         return res;
     } else {
         conf->cx = conf->rows[conf->cy - 1].size + numline_offset;
@@ -280,7 +282,7 @@ int editor_row_append_string(struct EditorConfig* conf, struct Row* row,
     row->size += slen;
     row->chars[row->size] = '\0';
     editor_update_row(conf, row);
-    conf->is_dirty = 1;
+    conf->flags.is_dirty = 1;
 
     return EXIT_SUCCESS;
 }
@@ -311,7 +313,7 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
         char buf_indent_start[2] = {language_indent_start, '\0'};
         char buf_indent_end[2] = {language_indent_end, '\0'};
 
-        bool in_string = false;
+        uint8_t in_string = 0;
 
         // stack will work great to know if an indentation is essential
 
@@ -319,7 +321,7 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
         stack_create(s, NULL, free);
 
         for (size_t i = 0; i < (size_t)conf->cx - numline_offset; i++) {
-            char c = row->chars[i];
+            enum EditorKey c = row->chars[i];
 
             if (c == '"' && (i == 0 || row->chars[i - 1] != '\\')) {
                 in_string = !in_string;

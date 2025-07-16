@@ -121,7 +121,7 @@ int editor_syntax_highlight_select(struct EditorConfig* conf) {
         struct EditorSyntax* hl_entity = &HLDB[i];
         int j = 0;
         while (hl_entity->filematch[j]) {
-            bool is_ext = hl_entity->filematch[j][0] == '.';
+            uint8_t is_ext = hl_entity->filematch[j][0] == '.';
             if ((is_ext && ext && strcmp(hl_entity->filematch[j], ext) == 0) ||
                 (!is_ext &&
                  strcmp(hl_entity->filematch[j], conf->filepath) == 0)) {
@@ -140,24 +140,24 @@ int editor_syntax_highlight_select(struct EditorConfig* conf) {
 }
 
 /*
-    in the upcoming static functions we return numbers because each of these
-    returns return how much to step
+    ? in the upcoming static functions we return numbers because each of these
+    ? returns return how much to step
 */
 
 static size_t handle_multiline_comment(struct Row* row, size_t i,
                                        const char* mce, size_t mce_len,
-                                       bool* in_comment) {
+                                       uint8_t* in_comment) {
     row->hl[i] = HL_MCOMMENT;
     if (strncmp(&row->render[i], mce, mce_len) == 0) {
         memset(&row->hl[i], HL_MCOMMENT, mce_len);
-        *in_comment = false;
+        *in_comment = 0;
         return mce_len;
     }
     return 1;
 }
 
 static size_t handle_string(struct Row* row, size_t i, int* in_string) {
-    char c = row->render[i];
+    enum EditorKey c = row->render[i];
     row->hl[i] = HL_STRING;
     if (c == '\\' && i + 1 < row->size) {
         row->hl[i + 1] = HL_STRING;
@@ -200,14 +200,14 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
     size_t mce_len = mcs ? strlen(mce) : 0;
 
     size_t i = 0;
-    bool prev_separator = true;
-    bool in_comment =
+    uint8_t prev_separator = 1;
+    uint8_t in_comment =
         (row->idx > 0 && conf->rows[row->idx - 1].hl_open_comment);
 
     int in_string = 0;
 
     while (i < row->rsize) {
-        char c = row->render[i];
+        enum EditorKey c = row->render[i];
         unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
 
         // Singleline comment
@@ -224,11 +224,11 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
             if (in_comment) {
                 i +=
                     handle_multiline_comment(row, i, mce, mce_len, &in_comment);
-                prev_separator = true;
+                prev_separator = 1;
                 continue;
             } else if (strncmp(&row->render[i], mcs, mcs_len) == 0) {
                 i += mcs_len;
-                in_comment = true;
+                in_comment = 1;
                 continue;
             }
         }
@@ -251,7 +251,7 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
             if ((isdigit(c) && (prev_separator || prev_hl == HL_NUMBER)) ||
                 (c == '.' && prev_hl == HL_NUMBER)) {
                 row->hl[i] = HL_NUMBER;
-                prev_separator = false;
+                prev_separator = 0;
             }
         }
 

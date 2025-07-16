@@ -19,7 +19,7 @@ struct termios orig_termios;
 
 static void term_size_flag_update(int sig) {
     (void)sig;
-    // if (g_conf) g_conf->resize_needed = 1;
+    if (g_conf) g_conf->flags.resize_needed = 1;
 }
 
 static void cleanup(void) {
@@ -28,19 +28,19 @@ static void cleanup(void) {
 
 #if SCROLL_DISABLE
     // Show terminal scrollbar
-    if (write(STDOUT_FILENO, "\x1b[?1049l", 9) == -1) {
+    if (write(STDOUT_FILENO, "\x1b[?1049l", 9) == -1)
         die("couldn't show terminal scrollbar");
-    }
+
 #endif
 
 #if MOUSE_REPORTING
-    if (write(STDOUT_FILENO, "\x1b[?1000l", 9) <= 0) {
+    if (write(STDOUT_FILENO, "\x1b[?1000l", 9) <= 0)
         die("couldn't disable mouse click");  // Disable mouse click
                                               // tracking
-    }
-    if (write(STDOUT_FILENO, "\x1b[?1006l", 9) <= 0) {
+
+    if (write(STDOUT_FILENO, "\x1b[?1006l", 9) <= 0)
         die("couldn't disable SGR");  // Disable SGR mode
-    }
+
 #endif
 }
 
@@ -79,10 +79,15 @@ void term_create(void) {
                      // basically flag needed to handle any sort of interrupt
 
     sigaction(SIGWINCH, &sa, NULL);
-    signal(SIGSEGV, term_exit);
-    signal(SIGINT, term_exit);
-    signal(SIGTERM, term_exit);
 
+    int signals[] = {SIGSEGV, SIGINT, SIGTERM};
+    for (int i = 0; i < 3; ++i) {
+        struct sigaction sa_exit;
+        sa_exit.sa_handler = term_exit;
+        sigemptyset(&sa_exit.sa_mask);
+        sa_exit.sa_flags = 0;
+        sigaction(signals[i], &sa_exit, NULL);
+    }
 #if MOUSE_REPORTING
 
     if (write(STDOUT_FILENO, "\x1b[?1000h", 9) < 0) {
@@ -93,11 +98,6 @@ void term_create(void) {
     }  // Enable mouse click tracking
     // Enable SGR (1006) mode for xterm
 #endif
-
-    // apply these settings for stdout
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1) {
-        die("tcsetattr");
-    }
 }
 
 void term_exit(int sig __attribute__((unused))) {

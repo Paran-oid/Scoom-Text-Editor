@@ -1,8 +1,7 @@
 #ifndef INPUT_H
 #define INPUT_H
 
-
-
+#include <stdint.h>
 struct EditorConfig;
 struct Row;
 
@@ -46,18 +45,18 @@ enum EditorKey {
 
 };
 
-int editor_set_status_message(struct EditorConfig *conf, const char *message,
-                              ...);
+uint8_t editor_set_status_message(struct EditorConfig *conf,
+                                  const char *message, ...);
 char *editor_prompt(struct EditorConfig *conf, const char *prompt,
-                    void (*callback)(struct EditorConfig *, char *, int));
+                    void (*callback)(struct EditorConfig *, char *, int32_t));
 
-int editor_cursor_ctrl(struct EditorConfig *conf, const enum EditorKey key);
-int editor_cursor_move(struct EditorConfig *conf, int key);
-int editor_shift_select(struct EditorConfig *conf, int key);
+uint8_t editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key);
+uint8_t editor_cursor_move(struct EditorConfig *conf, enum EditorKey key);
+uint8_t editor_shift_select(struct EditorConfig *conf, enum EditorKey key);
 
-int editor_read_key(struct EditorConfig *conf);
-int editor_process_key_press(struct EditorConfig *conf);
+uint8_t editor_read_key(struct EditorConfig *conf);
+uint8_t editor_process_key_press(struct EditorConfig *conf);
 
-int editor_insert_newline(struct EditorConfig *conf);
+uint8_t editor_insert_newline(struct EditorConfig *conf);
 
 #endif

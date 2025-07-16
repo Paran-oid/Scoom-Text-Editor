@@ -139,7 +139,7 @@ int editor_draw_statusbar(struct EditorConfig *conf, struct ABuf *ab) {
     int status_len =
         snprintf(status, sizeof(status), "%.20s - %d lines %s",
                  conf->filepath ? conf->filepath : "[No Name]", conf->numrows,
-                 conf->is_dirty ? "(modified)" : "");
+                 conf->flags.is_dirty ? "(modified)" : "");
 
     int rstatus_len = snprintf(rstatus, sizeof(rstatus), "%s | %d/%d",
                                conf->syntax ? conf->syntax->filetype : "no ft",
@@ -195,7 +195,7 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
                 welcome screen
         */
         if (filerow >= conf->numrows) {
-            if (!conf->program_state && conf->numrows == 0 &&
+            if (!conf->flags.program_state && conf->numrows == 0 &&
                 y == (size_t)conf->screen_rows / 3) {
                 helper_welcome_screen(conf, ab);
             } else {
@@ -325,9 +325,9 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
 int editor_scroll(struct EditorConfig *conf) {
     if (conf->numrows == 0) return EXIT_FAILURE;
 
-    if (conf->resize_needed) {
+    if (conf->flags.resize_needed) {
         term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols);
-        conf->resize_needed = 0;
+        conf->flags.resize_needed = 0;
     }
 
     struct Row *row = &conf->rows[conf->cy];

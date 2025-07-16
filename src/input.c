@@ -31,15 +31,19 @@ static void skip_word_backward(struct EditorConfig *conf, struct Row *row,
                                int numline_offset) {
     if (conf->cx == numline_offset) return;
 
-    conf->cx--;
+    if (!conf->cx)
+        if (!conf->cx) conf->cx--;
+
     int cursor_offset = conf->cx - numline_offset;
 
     while (conf->cx > numline_offset && !ISCHAR(row->chars[cursor_offset]) &&
            (row->chars[cursor_offset] != '_'))
-        conf->cx--;
+        if (!conf->cx) conf->cx--;
+
     while (conf->cx > numline_offset && (ISCHAR(row->chars[cursor_offset]) ||
                                          (row->chars[cursor_offset] == '_')))
-        conf->cx--;
+        if (!conf->cx) conf->cx--;
+
     if (!ISCHAR(row->chars[cursor_offset]) &&
         (row->chars[cursor_offset] != '_')) {
         conf->cx++;
@@ -95,7 +99,8 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
                     conf->cx == numline_offset + conf->coloff) {
                     conf->coloff--;
                 }
-                conf->cx--;
+                if (!conf->cx) conf->cx--;
+
             } else if (conf->cy > 0) {
                 conf->cy--;
                 row =
@@ -238,12 +243,14 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
     return EXIT_SUCCESS;
 }
 
-int editor_read_key(struct EditorConfig *conf __attribute__((unused))) {
-    char c;
+int editor_read_key(struct EditorConfig *conf) {
+    enum EditorKey c;
     int nread;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+        if (conf->flags.resize_needed) return INTERRUPT_ENCOUNTERED;
+
         if (nread == -1 && errno != EAGAIN && errno != EINTR) {
-            die("read");
+            die("editor failed to read key to input");
         }
     }
 
@@ -337,7 +344,7 @@ int editor_read_key(struct EditorConfig *conf __attribute__((unused))) {
 
 /*
         Side Note:
-        We use int c instead of char c since we have mapped
+        We use int c instead of enum EditorKey c since we have mapped
         some keys to values bigger than the max 255 like for ARROWS
 */
 int editor_process_key_press(struct EditorConfig *conf) {
@@ -370,13 +377,13 @@ int editor_process_key_press(struct EditorConfig *conf) {
         case F12:
             break;
 
-        // TODO: do something about this commented code
+            // TODO: do something about this commented code
 
-        // case INTERRUPT_ENCOUNTERED:
-        //     conf->resize_needed = 0;
-        //     term_get_window_size(conf, &conf->screen_rows,
-        //     &conf->screen_cols); conf->screen_rows -= 2;  // for prompt and
-        //     message rows break;
+        case INTERRUPT_ENCOUNTERED:
+            conf->flags.resize_needed = 0;
+            term_get_window_size(conf, &conf->screen_rows, &conf->screen_cols);
+            conf->screen_rows -= 2;  // for prompt and message rows
+            break;
         case '\r':
             s = malloc(sizeof(struct Snapshot));
             snapshot_create(conf, s);
@@ -461,7 +468,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
             break;
 
         case CTRL_KEY('q'):
-            if (quit_times != 0 && conf->is_dirty) {
+            if (quit_times != 0 && conf->flags.is_dirty) {
                 editor_set_status_message(conf,
                                           "WARNING!!! file has unsaved changes."
                                           "Press CTRL-Q %d time(s) to leave",
@@ -511,7 +518,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
             break;
         default:
             // program officially starts
-            if (!conf->program_state) conf->program_state = 1;
+            if (!conf->flags.program_state) conf->flags.program_state = 1;
 
             if (time_elapsed > 0.5) {
                 s = malloc(sizeof(struct Snapshot));
@@ -526,7 +533,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
                 char extra_appended = closing_paren(c);
                 if (c) {
                     editor_insert_char(conf, extra_appended);
-                    conf->cx--;
+                    if (!conf->cx) conf->cx--;
                 }
             }
 
@@ -559,9 +566,9 @@ int editor_insert_newline(struct EditorConfig *conf) {
     if (conf->cx == numline_prefix_width) {
         result = editor_insert_row(conf, conf->cy, "", 0);
     } else {
-        bool is_compound_block =
+        uint8_t is_compound_block =
             check_compound_statement(current_row->chars, current_row->size);
-        bool cursor_inside_brackets =
+        uint8_t cursor_inside_brackets =
             check_is_in_brackets(current_row->chars, current_row->size,
                                  conf->cx - numline_prefix_width);
 
@@ -639,7 +646,7 @@ int editor_insert_newline(struct EditorConfig *conf) {
         if (new_indent > original_indent) {
             conf->cx++;
         } else if (new_indent < original_indent) {
-            conf->cx--;
+            if (!conf->cx) conf->cx--;
             if (conf->cx < numline_prefix_width) {
                 conf->cx = numline_prefix_width;
             }
