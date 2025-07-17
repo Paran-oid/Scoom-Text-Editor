@@ -6,7 +6,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "input.h"
 #include "stack.h"
 
 /* Misc */
@@ -26,11 +25,11 @@ char closing_paren(char c) {
 }
 
 /* String and Char operations*/
-uint8_t str_append(char** dest, const char* src) {
+int8_t str_append(char** dest, const char* src) {
     if (!dest || !src) die("tried to append to an empty string");
 
-    size_t dest_len = strlen(*dest);
-    size_t src_len = strlen(src);
+    int32_t dest_len = strlen(*dest);
+    int32_t src_len = strlen(src);
 
     char* result = malloc(src_len + dest_len + 1);
     if (!result) die("error allocating memory for str_append");
@@ -45,11 +44,11 @@ uint8_t str_append(char** dest, const char* src) {
     return EXIT_SUCCESS;
 }
 
-uint8_t str_prepend(char** dest, const char* src) {
+int8_t str_prepend(char** dest, const char* src) {
     if (!dest || !src) die("tried to prepend to an empty string");
 
-    size_t dest_len = strlen(*dest);
-    size_t src_len = strlen(src);
+    int32_t dest_len = strlen(*dest);
+    int32_t src_len = strlen(src);
 
     char* result = malloc(src_len + dest_len + 1);
     if (!result) die("error allocating memory for str_prepend");
@@ -66,11 +65,11 @@ uint8_t str_prepend(char** dest, const char* src) {
 
 /* Checking */
 
-uint8_t check_seperator(char c) {
+int8_t check_seperator(char c) {
     return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != NULL;
 }
 
-uint8_t check_compound_statement(const char* str, size_t len) {
+int8_t check_compound_statement(const char* str, int32_t len) {
     if (count_char(str, len, '{') == 0 && count_char(str, len, '}') == 0)
         return 0;
 
@@ -79,10 +78,10 @@ uint8_t check_compound_statement(const char* str, size_t len) {
 
     stack_create(s, NULL, free);
 
-    uint8_t in_string = 0;
+    int8_t in_string = 0;
 
-    for (size_t i = 0; i < len; i++) {
-        enum EditorKey c = str[i];
+    for (int32_t i = 0; i < len; i++) {
+        char c = str[i];
 
         if (c == '"' && (i == 0 || str[i - 1] != '\\')) {
             in_string = !in_string;
@@ -111,20 +110,20 @@ uint8_t check_compound_statement(const char* str, size_t len) {
         }
     }
 
-    uint8_t isempty = stack_size(s) == 0;
+    int8_t isempty = stack_size(s) == 0;
     stack_destroy(s);
     free(s);
 
     return isempty;
 }
 
-uint8_t check_is_in_brackets(const char* str, size_t len, uint32_t cx) {
-    uint32_t brackets = 0;
-    uint8_t in_string = 0;
+int8_t check_is_in_brackets(const char* str, int32_t len, int32_t cx) {
+    int32_t brackets = 0;
+    int8_t in_string = 0;
 
-    size_t i = 0;
-    for (; i < (size_t)cx && i < len; i++) {
-        enum EditorKey c = str[i];
+    int32_t i = 0;
+    for (; i < cx && i < len; i++) {
+        char c = str[i];
 
         if (c == '"' && (i == 0 || str[i - 1] != '\\')) {
             in_string = !in_string;
@@ -151,24 +150,24 @@ uint8_t check_is_in_brackets(const char* str, size_t len, uint32_t cx) {
     return 0;
 }
 
-inline uint8_t check_is_paranthesis(enum EditorKey c) {
+inline int8_t check_is_paranthesis(char c) {
     return c == '{' || c == '(' || c == '[';
 }
 
 /* Counting */
 
-uint32_t count_char(const char* str, const size_t size, enum EditorKey c) {
-    uint32_t total = 0;
-    for (size_t i = 0; i < size; i++) {
+int32_t count_char(const char* str, const int32_t size, char c) {
+    int32_t total = 0;
+    for (int32_t i = 0; i < size; i++) {
         if (str[i] == c) total++;
     }
     return total;
 }
 
-uint32_t count_digits(int32_t n) {
+int32_t count_digits(int32_t n) {
     if (n == 0) return 0;
 
-    uint32_t res = 0;
+    int32_t res = 0;
     while (n) {
         n /= 10;
         res++;
@@ -177,9 +176,9 @@ uint32_t count_digits(int32_t n) {
 }
 
 // this function basically calculates "indentations"
-uint32_t count_first_tabs(const char* s, size_t len) {
-    uint8_t count = 0;
-    for (size_t i = 0; i < len; i++) {
+int32_t count_first_tabs(const char* s, int32_t len) {
+    int8_t count = 0;
+    for (int32_t i = 0; i < len; i++) {
         if (s[i] == '\t')
             count++;
         else
@@ -189,9 +188,9 @@ uint32_t count_first_tabs(const char* s, size_t len) {
 }
 
 // same functionality as above just with spaces
-uint32_t count_first_spaces(const char* s, size_t len) {
-    uint32_t count = 0;
-    for (size_t i = 0; i < len; i++) {
+int32_t count_first_spaces(const char* s, int32_t len) {
+    int32_t count = 0;
+    for (int32_t i = 0; i < len; i++) {
         if (s[i] == ' ')
             count++;
         else
@@ -202,7 +201,7 @@ uint32_t count_first_spaces(const char* s, size_t len) {
 
 // memory
 
-uint8_t swap(void* a, void* b, size_t elsize) {
+int8_t swap(void* a, void* b, int32_t elsize) {
     void* temp = malloc(elsize);
     if (!temp) die("memory allocation for temp in swap failed");
 

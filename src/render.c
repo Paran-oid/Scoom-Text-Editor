@@ -20,9 +20,9 @@
 /***  Appending buffer section ***/
 
 char *editor_prompt(struct EditorConfig *conf, const char *prompt,
-                    void (*callback)(struct EditorConfig *, char *, int)) {
-    size_t bufsize = 128;
-    size_t buflen = 0;
+                    void (*callback)(struct EditorConfig *, char *, int32_t)) {
+    int32_t bufsize = 128;
+    int32_t buflen = 0;
     char *buf = malloc(bufsize);
     if (!buf) die("buf malloc failed");
     buf[0] = '\0';
@@ -32,7 +32,7 @@ char *editor_prompt(struct EditorConfig *conf, const char *prompt,
             die("editor set message failed...");
         if (editor_refresh_screen(conf) == EXIT_FAILURE)
             die("editor refresh screen failed");
-        int c = editor_read_key(conf);
+        int32_t c = editor_read_key(conf);
 
         if (c == '\r') {
             if (buflen != 0) {
@@ -67,7 +67,8 @@ char *editor_prompt(struct EditorConfig *conf, const char *prompt,
     return NULL;
 }
 
-int editor_set_status_message(struct EditorConfig *conf, const char *fmt, ...) {
+int8_t editor_set_status_message(struct EditorConfig *conf, const char *fmt,
+                                 ...) {
     va_list ap;
     va_start(ap, fmt);
     vsnprintf(conf->status_msg, sizeof(conf->status_msg), fmt, ap);
@@ -79,7 +80,7 @@ int editor_set_status_message(struct EditorConfig *conf, const char *fmt, ...) {
 
 /***  Screen display and rendering section ***/
 
-int editor_refresh_screen(struct EditorConfig *conf) {
+int8_t editor_refresh_screen(struct EditorConfig *conf) {
     editor_scroll(conf);
 
     struct ABuf ab = ABUF_INIT;
@@ -105,19 +106,17 @@ int editor_refresh_screen(struct EditorConfig *conf) {
              conf->rx - conf->coloff + 1);
     ab_append(&ab, buf, strlen(buf));
 
-    if (write(STDOUT_FILENO, ab.buf, ab.len) == 0) {
+    if (write(STDOUT_FILENO, ab.buf, ab.len) == 0)
         die("couldn't write to stdout");
-    }
 
     ab_free(&ab);
     return EXIT_SUCCESS;
 }
 
-int editor_draw_messagebar(struct EditorConfig *conf, struct ABuf *ab) {
+int8_t editor_draw_messagebar(struct EditorConfig *conf, struct ABuf *ab) {
     ab_append(ab, "\x1b[K", 3);  // we clear current line in terminal
-    size_t message_len = strlen(conf->status_msg);
-    if (message_len > (size_t)conf->screen_cols)
-        message_len = conf->screen_cols;
+    int32_t message_len = strlen(conf->status_msg);
+    if (message_len > conf->screen_cols) message_len = conf->screen_cols;
 
     if (message_len && time(NULL) - conf->sbuf_time < 5)
         ab_append(ab, conf->status_msg, message_len);
@@ -125,7 +124,7 @@ int editor_draw_messagebar(struct EditorConfig *conf, struct ABuf *ab) {
     return EXIT_SUCCESS;
 }
 
-int editor_draw_statusbar(struct EditorConfig *conf, struct ABuf *ab) {
+int8_t editor_draw_statusbar(struct EditorConfig *conf, struct ABuf *ab) {
     /*
     you could specify all of these attributes using the command <esc>[1;4;5;7m.
     An argument of 0 clears all attributes, and is the default argument, so we
@@ -136,14 +135,15 @@ int editor_draw_statusbar(struct EditorConfig *conf, struct ABuf *ab) {
 
     // text to write inside statusbar
     char status[80], rstatus[80];
-    int status_len =
+    int32_t status_len =
         snprintf(status, sizeof(status), "%.20s - %d lines %s",
                  conf->filepath ? conf->filepath : "[No Name]", conf->numrows,
                  conf->flags.is_dirty ? "(modified)" : "");
 
-    int rstatus_len = snprintf(rstatus, sizeof(rstatus), "%s | %d/%d",
-                               conf->syntax ? conf->syntax->filetype : "no ft",
-                               conf->cy + 1, conf->numrows);
+    int32_t rstatus_len =
+        snprintf(rstatus, sizeof(rstatus), "%s | %d/%d",
+                 conf->syntax ? conf->syntax->filetype : "no ft", conf->cy + 1,
+                 conf->numrows);
 
     if (status_len > conf->screen_cols) status_len = conf->screen_cols;
     ab_append(ab, status, status_len);
@@ -164,14 +164,15 @@ int editor_draw_statusbar(struct EditorConfig *conf, struct ABuf *ab) {
     return EXIT_SUCCESS;
 }
 
-static int helper_welcome_screen(struct EditorConfig *conf, struct ABuf *ab) {
+static int32_t helper_welcome_screen(struct EditorConfig *conf,
+                                     struct ABuf *ab) {
     char buf[100];
-    int welcome_len = snprintf(
+    int32_t welcome_len = snprintf(
         buf, sizeof(buf), "Welcome to version %.2lf of Scoom!", SCOOM_VERSION);
 
     if (welcome_len > conf->screen_cols) welcome_len = conf->screen_cols;
 
-    int padding = (conf->screen_cols - welcome_len) / 2;
+    int32_t padding = (conf->screen_cols - welcome_len) / 2;
     if (padding) {
         ab_append(ab, "~", 1);
         padding--;
@@ -184,11 +185,11 @@ static int helper_welcome_screen(struct EditorConfig *conf, struct ABuf *ab) {
     return EXIT_SUCCESS;
 }
 
-int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
-    uint8_t currently_selecting = 0;
+int8_t editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
+    int8_t currently_selecting = 0;
 
-    for (size_t y = 0; y < (size_t)conf->screen_rows; y++) {
-        int filerow = y + conf->rowoff;
+    for (int32_t y = 0; y < conf->screen_rows; y++) {
+        int32_t filerow = y + conf->rowoff;
 
         /*
                 if there are no rows then we can safely assume we are in
@@ -196,7 +197,7 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
         */
         if (filerow >= conf->numrows) {
             if (!conf->flags.program_state && conf->numrows == 0 &&
-                y == (size_t)conf->screen_rows / 3) {
+                y == conf->screen_rows / 3) {
                 helper_welcome_screen(conf, ab);
             } else {
                 ab_append(ab, "~", 1);
@@ -206,12 +207,12 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
             struct Row *row = &conf->rows[filerow];
 
             // numline section
-            int filerow_num = row->idx + 1;
+            int32_t filerow_num = row->idx + 1;
             char offset[16];
-            int offset_size =
+            int32_t offset_size =
                 snprintf(offset, sizeof(offset), "%d ", filerow_num);
 
-            int rowlen = row->rsize - conf->coloff;
+            int32_t rowlen = row->rsize - conf->coloff;
             if (rowlen < 0) rowlen = 0;
             if (rowlen > conf->screen_cols - offset_size) {
                 rowlen = conf->screen_cols - offset_size;
@@ -224,10 +225,11 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
 
             // highlighting and control section
             unsigned char *hl = &row->hl[conf->coloff];
-            int current_color = -1;
-            int inverted_color = currently_selecting;
+            int32_t current_color = -1;
+            int8_t inverted_color = currently_selecting;
 
-            int j = 0;
+            // int32_t and not int32_t because sel members can be negative
+            int32_t j = 0;
 
             while (j < offset_size) {
                 ab_append(ab, &s[j], 1);
@@ -265,8 +267,8 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
 
                     if (current_color != -1 && !inverted_color) {
                         char buf[16];
-                        size_t clen = snprintf(buf, sizeof(buf), "\x1b[%dm",
-                                               current_color);
+                        int32_t clen = snprintf(buf, sizeof(buf), "\x1b[%dm",
+                                                current_color);
                         ab_append(ab, buf, clen);
                     }
 
@@ -278,11 +280,12 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
                     ab_append(ab, &s[j], 1);
 
                 } else {
-                    int color = editor_syntax_to_color_row(hl[j - offset_size]);
+                    int32_t color =
+                        editor_syntax_to_color_row(hl[j - offset_size]);
                     if (color != current_color && !inverted_color) {
                         current_color = color;
                         char buf[16];
-                        int clen =
+                        int32_t clen =
                             snprintf(buf, sizeof(buf), "\x1b[%dm", color);
                         ab_append(ab, buf, clen);
                     }
@@ -322,7 +325,7 @@ int editor_draw_rows(struct EditorConfig *conf, struct ABuf *ab) {
     return EXIT_SUCCESS;
 }
 
-int editor_scroll(struct EditorConfig *conf) {
+int8_t editor_scroll(struct EditorConfig *conf) {
     if (conf->numrows == 0) return EXIT_FAILURE;
 
     if (conf->flags.resize_needed) {
@@ -331,7 +334,7 @@ int editor_scroll(struct EditorConfig *conf) {
     }
 
     struct Row *row = &conf->rows[conf->cy];
-    int numline_offset = editor_row_numline_calculate(row);
+    int32_t numline_offset = editor_row_numline_calculate(row);
 
     conf->rx = conf->cx;
     if (conf->cy < conf->numrows) {

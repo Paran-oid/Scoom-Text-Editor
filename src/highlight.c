@@ -23,8 +23,9 @@ char* C_HL_KEYWORDS[] = {
     "continue", "return", "goto",
 
     // Data types (with | to highlight them as types)
-    "char|", "short|", "int|", "long|", "float|", "double|", "void|", "_Bool|",
-    "unsigned|", "signed|", "size_t|", "ptrdiff_t|", "intptr_t|", "uintptr_t|",
+    "char|", "short|", "int|", "long|", "float|", "double|", "void|",
+    "_Bool|", "unsigned|", "signed|", "int32_t|", "ptrdiff_t|", "intptr_t|",
+    "uintptr_t|",
 
     // Qualifiers & Storage class
     "const", "volatile", "static", "extern", "register", "auto", "restrict",
@@ -82,7 +83,7 @@ struct EditorSyntax HLDB[] = {
 
 #define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 
-int editor_syntax_to_color_row(enum EditorHighlight hl) {
+int8_t editor_syntax_to_color_row(enum EditorHighlight hl) {
     /*
             Colors are ranged from 31 to 37
             39 is to reset color to it's default
@@ -107,7 +108,7 @@ int editor_syntax_to_color_row(enum EditorHighlight hl) {
     }
 }
 
-int editor_syntax_highlight_select(struct EditorConfig* conf) {
+int8_t editor_syntax_highlight_select(struct EditorConfig* conf) {
     conf->syntax = NULL;
 
     if (!conf->filepath) return EXIT_FAILURE;
@@ -119,15 +120,15 @@ int editor_syntax_highlight_select(struct EditorConfig* conf) {
 
     for (size_t i = 0; i < HLDB_ENTRIES; i++) {
         struct EditorSyntax* hl_entity = &HLDB[i];
-        int j = 0;
+        size_t j = 0;
         while (hl_entity->filematch[j]) {
-            uint8_t is_ext = hl_entity->filematch[j][0] == '.';
+            int8_t is_ext = hl_entity->filematch[j][0] == '.';
             if ((is_ext && ext && strcmp(hl_entity->filematch[j], ext) == 0) ||
                 (!is_ext &&
                  strcmp(hl_entity->filematch[j], conf->filepath) == 0)) {
                 conf->syntax = hl_entity;
 
-                for (int filerow = 0; filerow < conf->numrows; filerow++) {
+                for (int32_t filerow = 0; filerow < conf->numrows; filerow++) {
                     editor_update_syntax(conf, &conf->rows[filerow]);
                 }
                 return EXIT_SUCCESS;
@@ -144,9 +145,9 @@ int editor_syntax_highlight_select(struct EditorConfig* conf) {
     ? returns return how much to step
 */
 
-static size_t handle_multiline_comment(struct Row* row, size_t i,
-                                       const char* mce, size_t mce_len,
-                                       uint8_t* in_comment) {
+static int32_t handle_multiline_comment(struct Row* row, int32_t i,
+                                        const char* mce, int32_t mce_len,
+                                        int8_t* in_comment) {
     row->hl[i] = HL_MCOMMENT;
     if (strncmp(&row->render[i], mce, mce_len) == 0) {
         memset(&row->hl[i], HL_MCOMMENT, mce_len);
@@ -156,8 +157,8 @@ static size_t handle_multiline_comment(struct Row* row, size_t i,
     return 1;
 }
 
-static size_t handle_string(struct Row* row, size_t i, int* in_string) {
-    enum EditorKey c = row->render[i];
+static int32_t handle_string(struct Row* row, int32_t i, int8_t* in_string) {
+    char c = row->render[i];
     row->hl[i] = HL_STRING;
     if (c == '\\' && i + 1 < row->size) {
         row->hl[i + 1] = HL_STRING;
@@ -167,10 +168,10 @@ static size_t handle_string(struct Row* row, size_t i, int* in_string) {
     return 1;
 }
 
-static size_t handle_keywords(struct Row* row, size_t i, char** keywords) {
-    for (size_t j = 0; keywords[j]; j++) {
-        size_t klen = strlen(keywords[j]);
-        int is_kw2 = keywords[j][klen - 1] == '|';
+static int32_t handle_keywords(struct Row* row, int32_t i, char** keywords) {
+    for (int32_t j = 0; keywords[j]; j++) {
+        int32_t klen = strlen(keywords[j]);
+        int8_t is_kw2 = keywords[j][klen - 1] == '|';
         if (is_kw2) klen--;
         if ((strncmp(&row->render[i], keywords[j], klen) == 0) &&
             check_seperator(row->render[i + klen])) {
@@ -181,7 +182,7 @@ static size_t handle_keywords(struct Row* row, size_t i, char** keywords) {
     return 0;
 }
 
-int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
+int8_t editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
     if (!row->chars) return EXIT_FAILURE;
 
     row->hl = realloc(row->hl, row->rsize);
@@ -195,19 +196,19 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
     char* mcs = conf->syntax->multiline_comment_start;
     char* mce = conf->syntax->multiline_comment_end;
 
-    size_t scs_len = scs ? strlen(scs) : 0;
-    size_t mcs_len = mcs ? strlen(mcs) : 0;
-    size_t mce_len = mcs ? strlen(mce) : 0;
+    int32_t scs_len = scs ? strlen(scs) : 0;
+    int32_t mcs_len = mcs ? strlen(mcs) : 0;
+    int32_t mce_len = mcs ? strlen(mce) : 0;
 
-    size_t i = 0;
-    uint8_t prev_separator = 1;
-    uint8_t in_comment =
+    int32_t i = 0;
+    int8_t prev_separator = 1;
+    int8_t in_comment =
         (row->idx > 0 && conf->rows[row->idx - 1].hl_open_comment);
 
-    int in_string = 0;
+    int8_t in_string = 0;
 
     while (i < row->rsize) {
-        enum EditorKey c = row->render[i];
+        char c = row->render[i];
         unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
 
         // Singleline comment
@@ -257,7 +258,7 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
 
         // Keyword
         if (prev_separator) {
-            size_t step = handle_keywords(row, i, keywords);
+            int32_t step = handle_keywords(row, i, keywords);
             if (step) {
                 i += step;
                 continue;
@@ -268,7 +269,7 @@ int editor_update_syntax(struct EditorConfig* conf, struct Row* row) {
         i++;
     }
 
-    int changed = (row->hl_open_comment != in_comment);
+    int32_t changed = (row->hl_open_comment != in_comment);
     row->hl_open_comment = in_comment;
     if (changed && row->idx + 1 < conf->numrows) {
         editor_update_syntax(conf, row + 1);

@@ -12,8 +12,8 @@ extern struct termios orig_termios;
 void term_create(void);
 void term_exit(int32_t sig);
 
-uint8_t term_get_window_size(struct EditorConfig* conf, uint32_t* rows,
-                             uint32_t* cols);
-uint8_t term_get_cursor_position(uint32_t* rows, uint32_t* cols);
+int8_t term_get_window_size(struct EditorConfig* conf, int32_t* rows,
+                            int32_t* cols);
+int8_t term_get_cursor_position(int32_t* rows, int32_t* cols);
 
 #endif

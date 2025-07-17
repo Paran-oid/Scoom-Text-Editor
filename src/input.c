@@ -15,26 +15,25 @@
 #include "terminal.h"
 
 static void skip_word_forward(struct EditorConfig *conf, struct Row *row,
-                              int numline_offset) {
-    int cursor_offset = conf->cx - numline_offset;
-    while (conf->cx < (int)row->size + numline_offset &&
+                              int32_t numline_offset) {
+    int32_t cursor_offset = conf->cx - numline_offset;
+    while (conf->cx < row->size + numline_offset &&
            !ISCHAR(row->chars[cursor_offset]) &&
            (row->chars[cursor_offset] != '_'))
         conf->cx++;
-    while (conf->cx < (int)row->size + numline_offset &&
+    while (conf->cx < row->size + numline_offset &&
            (ISCHAR(row->chars[cursor_offset]) ||
             (row->chars[cursor_offset] == '_')))
         conf->cx++;
 }
 
 static void skip_word_backward(struct EditorConfig *conf, struct Row *row,
-                               int numline_offset) {
+                               int32_t numline_offset) {
     if (conf->cx == numline_offset) return;
 
-    if (!conf->cx)
-        if (!conf->cx) conf->cx--;
+    if (!conf->cx) conf->cx--;
 
-    int cursor_offset = conf->cx - numline_offset;
+    int32_t cursor_offset = conf->cx - numline_offset;
 
     while (conf->cx > numline_offset && !ISCHAR(row->chars[cursor_offset]) &&
            (row->chars[cursor_offset] != '_'))
@@ -50,13 +49,13 @@ static void skip_word_backward(struct EditorConfig *conf, struct Row *row,
     }
 }
 
-int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
+int8_t editor_cursor_ctrl(struct EditorConfig *conf, int32_t key) {
     if (conf->cy < 0 || conf->cy >= conf->numrows) return EXIT_FAILURE;
     struct Row *row = &conf->rows[conf->cy];
-    int numline_offset = editor_row_numline_calculate(row);
+    int32_t numline_offset = editor_row_numline_calculate(row);
 
     if (key == CTRL_ARROW_RIGHT) {
-        if (conf->cx == (int)row->size + numline_offset) {
+        if (conf->cx == row->size + numline_offset) {
             conf->cy++;
             if (conf->cy >= conf->numrows - 1) {
                 conf->cy--;
@@ -74,23 +73,23 @@ int editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key) {
                 return EXIT_FAILURE;
             }
             row = &conf->rows[conf->cy];
-            conf->cx = row->size != 0 ? (int)row->size - 1 : numline_offset;
+            conf->cx = row->size != 0 ? row->size - 1 : numline_offset;
         }
         skip_word_backward(conf, row, numline_offset);
     }
     return EXIT_SUCCESS;
 }
 
-int editor_cursor_move(struct EditorConfig *conf, int key) {
+int8_t editor_cursor_move(struct EditorConfig *conf, int32_t key) {
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
 
-    int numline_offset = 0;
+    int32_t numline_offset = 0;
     if (row) {
         numline_offset = editor_row_numline_calculate(row);
     }
 
-    int desired_cx_logical = conf->cx - numline_offset;
+    int32_t desired_cx_logical = conf->cx - numline_offset;
 
     switch (key) {
         case ARROW_LEFT:
@@ -110,7 +109,7 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
             }
             break;
         case ARROW_RIGHT:
-            if (row && conf->cx < (int)row->size + numline_offset) {
+            if (row && conf->cx < row->size + numline_offset) {
                 conf->cx++;
             } else if (row && conf->cy < conf->numrows - 1) {
                 row = &conf->rows[++conf->cy];
@@ -124,7 +123,7 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
                 conf->cy--;
                 row = &conf->rows[conf->cy];
                 numline_offset = editor_row_numline_calculate(row);
-                if ((size_t)desired_cx_logical > row->size)
+                if (desired_cx_logical > row->size)
                     desired_cx_logical = row->size;
                 conf->cx = numline_offset + desired_cx_logical;
             }
@@ -134,7 +133,7 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
                 conf->cy++;
                 row = &conf->rows[conf->cy];
                 numline_offset = editor_row_numline_calculate(row);
-                if ((size_t)desired_cx_logical > row->size)
+                if (desired_cx_logical > row->size)
                     desired_cx_logical = row->size;
                 conf->cx = numline_offset + desired_cx_logical;
             }
@@ -143,7 +142,7 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
             die("invalid input...");
     }
     row = (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
-    if (row && conf->cx > (int)row->size + numline_offset) {
+    if (row && conf->cx > row->size + numline_offset) {
         conf->cx = row->size;
     }
 
@@ -153,13 +152,13 @@ int editor_cursor_move(struct EditorConfig *conf, int key) {
     return EXIT_SUCCESS;
 }
 
-int editor_shift_select(struct EditorConfig *conf, int key) {
+int8_t editor_shift_select(struct EditorConfig *conf, int32_t key) {
     struct Row *row = &conf->rows[conf->cy];
-    uint8_t numline_offset = editor_row_numline_calculate(row);
+    int32_t numline_offset = editor_row_numline_calculate(row);
     struct EditorCursorSelect *sel = &conf->sel;
 
     // basically taking into account numline offset
-    const uint32_t real_rx = conf->rx - numline_offset;
+    const int32_t real_rx = conf->rx - numline_offset;
 
     if (sel->start_col == -1 || sel->end_col == -1 || sel->start_row == -1 ||
         sel->end_row == -1) {
@@ -243,9 +242,9 @@ int editor_shift_select(struct EditorConfig *conf, int key) {
     return EXIT_SUCCESS;
 }
 
-int editor_read_key(struct EditorConfig *conf) {
-    enum EditorKey c;
-    int nread;
+int32_t editor_read_key(struct EditorConfig *conf) {
+    int32_t c;
+    int32_t nread;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
         if (conf->flags.resize_needed) return INTERRUPT_ENCOUNTERED;
 
@@ -344,22 +343,22 @@ int editor_read_key(struct EditorConfig *conf) {
 
 /*
         Side Note:
-        We use int c instead of enum EditorKey c since we have mapped
+        We use int32_t c instead of enum EditorKey c since we have mapped
         some keys to values bigger than the max 255 like for ARROWS
 */
-int editor_process_key_press(struct EditorConfig *conf) {
-    static int quit_times = QUIT_TIMES;
+int8_t editor_process_key_press(struct EditorConfig *conf) {
+    static int8_t quit_times = QUIT_TIMES;
 
     struct Snapshot *s = NULL;
     struct Row *row =
         (conf->cy >= conf->numrows) ? NULL : &conf->rows[conf->cy];
-    int c = editor_read_key(conf);
+    int32_t c = editor_read_key(conf);
 
     // times var will be needed to page up or down
-    int times = conf->screen_rows;
+    int8_t times = conf->screen_rows;
 
     time_t current_time = time(NULL);
-    double time_elapsed = difftime(current_time, conf->last_time_modified);
+    int64_t time_elapsed = difftime(current_time, conf->last_time_modified);
     conf->sel.active = 0;
 
     switch (c) {
@@ -548,7 +547,7 @@ int editor_process_key_press(struct EditorConfig *conf) {
     return EXIT_SUCCESS;
 }
 
-int editor_insert_newline(struct EditorConfig *conf) {
+int8_t editor_insert_newline(struct EditorConfig *conf) {
     struct Row *current_row;
     if (conf->numrows) {
         current_row = &conf->rows[conf->cy];
@@ -558,29 +557,29 @@ int editor_insert_newline(struct EditorConfig *conf) {
         return EXIT_SUCCESS;
     }
 
-    int numline_prefix_width = editor_row_numline_calculate(current_row);
-    int original_indent = current_row->indentation;
-    int new_indent = current_row->indentation;
-    int result;
+    int32_t numline_prefix_width = editor_row_numline_calculate(current_row);
+    int32_t original_indent = current_row->indentation;
+    int32_t new_indent = current_row->indentation;
+    int8_t result;
 
     if (conf->cx == numline_prefix_width) {
         result = editor_insert_row(conf, conf->cy, "", 0);
     } else {
-        uint8_t is_compound_block =
+        int8_t is_compound_block =
             check_compound_statement(current_row->chars, current_row->size);
-        uint8_t cursor_inside_brackets =
+        int8_t cursor_inside_brackets =
             check_is_in_brackets(current_row->chars, current_row->size,
                                  conf->cx - numline_prefix_width);
 
         // cursor inside {} basically
         if (is_compound_block && cursor_inside_brackets) {
             char *bracket_remainder_start = strstr(current_row->chars, "}");
-            size_t bracket_pos = bracket_remainder_start - current_row->chars;
-            size_t remainder_length = current_row->size - bracket_pos;
+            int32_t bracket_pos = bracket_remainder_start - current_row->chars;
+            int32_t remainder_length = current_row->size - bracket_pos;
 
             char *indented_remainder =
                 malloc(remainder_length + new_indent + 1);
-            size_t indented_remainder_len = remainder_length + new_indent;
+            int32_t indented_remainder_len = remainder_length + new_indent;
 
             memset(indented_remainder, '\t', new_indent);
             memcpy(indented_remainder + new_indent, bracket_remainder_start,
@@ -591,7 +590,7 @@ int editor_insert_newline(struct EditorConfig *conf) {
             current_row->chars[bracket_pos] = '\0';
 
             char *truncated_line = strdup(current_row->chars);
-            size_t truncated_line_len = strlen(truncated_line);
+            int32_t truncated_line_len = strlen(truncated_line);
 
             editor_delete_row(conf, conf->cy);
             editor_insert_row(conf, conf->cy, truncated_line,
@@ -612,7 +611,7 @@ int editor_insert_newline(struct EditorConfig *conf) {
             free(empty_indented_line);
         } else {
             char *newline;
-            size_t newline_len;
+            int32_t newline_len;
             editor_row_indent(conf, current_row, &newline, &newline_len);
             new_indent = count_first_tabs(newline, newline_len);
 
@@ -632,7 +631,7 @@ int editor_insert_newline(struct EditorConfig *conf) {
 
     current_row = &conf->rows[conf->cy];
 
-    int updated_prefix_width = count_digits(current_row->idx + 2) + 1;
+    int32_t updated_prefix_width = count_digits(current_row->idx + 2) + 1;
     numline_prefix_width =
         updated_prefix_width;  // could have been updated, so we check
 

@@ -20,7 +20,7 @@ static int32_t app_cmp(const void* str1, const void* str2) {
     return strcmp((const char*)str1, (const char*)str2);
 }
 
-uint8_t conf_create(struct EditorConfig* conf) {
+int8_t conf_create(struct EditorConfig* conf) {
     conf->filepath = NULL;
     // this is true only when user inputs something
     conf->flags.program_state = 0;
@@ -69,9 +69,8 @@ uint8_t conf_create(struct EditorConfig* conf) {
     return EXIT_SUCCESS;
 }
 
-uint8_t conf_select_update(struct EditorConfig* conf, int32_t start_row,
-                           int32_t end_row, int32_t start_col,
-                           int32_t end_col) {
+int8_t conf_select_update(struct EditorConfig* conf, int32_t start_row,
+                          int32_t end_row, int32_t start_col, int32_t end_col) {
     if (!conf) die("empty conf passed");
 
     conf->sel.start_col = start_col;
@@ -82,8 +81,8 @@ uint8_t conf_select_update(struct EditorConfig* conf, int32_t start_row,
     return EXIT_SUCCESS;
 }
 
-uint8_t conf_to_snapshot_update(struct EditorConfig* conf,
-                                struct Snapshot* snapshot) {
+int8_t conf_to_snapshot_update(struct EditorConfig* conf,
+                               struct Snapshot* snapshot) {
     conf->cx = snapshot->cx;
     conf->cy = snapshot->cy;
 
@@ -98,8 +97,8 @@ uint8_t conf_to_snapshot_update(struct EditorConfig* conf,
     return EXIT_SUCCESS;
 }
 
-uint8_t conf_destroy_rows(struct EditorConfig* conf) {
-    for (size_t i = 0; i < (size_t)conf->numrows; i++) {
+int8_t conf_destroy_rows(struct EditorConfig* conf) {
+    for (int32_t i = 0; i < conf->numrows; i++) {
         free(conf->rows[i].chars);
         free(conf->rows[i].render);
         free(conf->rows[i].hl);
@@ -111,7 +110,7 @@ uint8_t conf_destroy_rows(struct EditorConfig* conf) {
     return EXIT_SUCCESS;
 }
 
-uint8_t conf_destroy(struct EditorConfig* conf) {
+int8_t conf_destroy(struct EditorConfig* conf) {
     if (conf->filepath) free(conf->filepath);
     conf->flags.program_state = 0;
 

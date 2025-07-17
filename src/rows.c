@@ -10,16 +10,16 @@
 #include "highlight.h"
 #include "terminal.h"
 
-int editor_free_row(struct Row* row) {
+int8_t editor_free_row(struct Row* row) {
     free(row->chars);
     free(row->render);
     free(row->hl);
     return EXIT_SUCCESS;
 }
 
-int editor_insert_row_char(struct EditorConfig* conf, struct Row* row, int at,
-                           int c) {
-    if (at < 0 || (size_t)at > row->size) return EXIT_FAILURE;
+int8_t editor_insert_row_char(struct EditorConfig* conf, struct Row* row,
+                              int32_t at, int32_t c) {
+    if (at < 0 || at > row->size) return EXIT_FAILURE;
     // n stands for new for now
     char* new_chars = realloc(row->chars, row->size + 2);
     if (!new_chars) die("new_chars realloc failed");
@@ -36,8 +36,9 @@ int editor_insert_row_char(struct EditorConfig* conf, struct Row* row, int at,
     return EXIT_SUCCESS;
 }
 
-int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
-    if (at < 0 || (size_t)at >= row->size) return EXIT_FAILURE;
+int8_t editor_delete_row_char(struct EditorConfig* conf, struct Row* row,
+                              int32_t at) {
+    if (at < 0 || at >= row->size) return EXIT_FAILURE;
 
     memmove(&row->chars[at], &row->chars[at + 1], row->size - at - 1);
     row->size--;
@@ -54,8 +55,8 @@ int editor_delete_row_char(struct EditorConfig* conf, struct Row* row, int at) {
 
 //* make this code shorter if possible instead of having to do conf->rows[at] do
 //* row pointer or something
-int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
-                      size_t content_len) {
+int8_t editor_insert_row(struct EditorConfig* conf, int32_t at,
+                         const char* content, int32_t content_len) {
     if (at < 0 || at > conf->numrows) return EXIT_FAILURE;
 
     conf->rows = realloc(conf->rows, sizeof(struct Row) * (conf->numrows + 1));
@@ -63,7 +64,7 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
     memmove(&conf->rows[at + 1], &conf->rows[at],
             sizeof(struct Row) * (conf->numrows - at));
 
-    for (int j = at + 1; j <= conf->numrows; j++) {
+    for (int32_t j = at + 1; j <= conf->numrows; j++) {
         conf->rows[j].idx++;
     }
 
@@ -92,13 +93,13 @@ int editor_insert_row(struct EditorConfig* conf, int at, const char* content,
     return EXIT_SUCCESS;
 }
 
-int editor_update_row(struct EditorConfig* conf, struct Row* row) {
+int8_t editor_update_row(struct EditorConfig* conf, struct Row* row) {
     free(row->render);
-    int tabs = 0;
-    size_t n = 0;
+    int32_t tabs = 0;
+    int32_t n = 0;
 
     // first we need to check how much memory to allocate for the renderer
-    for (size_t j = 0; j < row->size; j++) {
+    for (int32_t j = 0; j < row->size; j++) {
         // TODO: make user able to choose between tab and spaces
         if (row->chars[j] == '\t') {
             tabs++;
@@ -113,7 +114,7 @@ int editor_update_row(struct EditorConfig* conf, struct Row* row) {
     row->render = malloc(row->size + tabs * (TAB_SIZE - 1) + 1);
     if (!row->render) die("row render malloc failed");
 
-    for (size_t j = 0; j < row->size; j++) {
+    for (int32_t j = 0; j < row->size; j++) {
         /*
                 If a tab is encountered:
                 - keep adding spaces until n is divisible by TAB_SIZE macro
@@ -135,15 +136,13 @@ int editor_update_row(struct EditorConfig* conf, struct Row* row) {
     return EXIT_SUCCESS;
 }
 
-int editor_delete_row(struct EditorConfig* conf, int at) {
+int8_t editor_delete_row(struct EditorConfig* conf, int32_t at) {
     if (at < 0 || at > conf->numrows) return EXIT_FAILURE;
     if (editor_free_row(&conf->rows[at]) == EXIT_FAILURE)
         die("editor free row failed");
     memmove(&conf->rows[at], &conf->rows[at + 1],
             sizeof(struct Row) * (conf->numrows - at - 1));
-    for (int j = at; j < conf->numrows - 1; j++) {
-        conf->rows[j].idx--;
-    }
+    for (int32_t j = at; j < conf->numrows - 1; j++) conf->rows[j].idx--;
 
     if (conf->numrows != 0) conf->numrows--;
     conf->rows = realloc(conf->rows, sizeof(struct Row) * conf->numrows);
@@ -151,25 +150,27 @@ int editor_delete_row(struct EditorConfig* conf, int at) {
     return EXIT_SUCCESS;
 }
 
-int editor_insert_char(struct EditorConfig* conf, int c) {
+int8_t editor_insert_char(struct EditorConfig* conf, int32_t c) {
     if (conf->cy == conf->numrows)
         editor_insert_row(conf, conf->numrows, "", 0);
 
-    int numline_offset = editor_row_numline_calculate(&conf->rows[conf->cy]);
+    int32_t numline_offset =
+        editor_row_numline_calculate(&conf->rows[conf->cy]);
 
     conf->flags.is_dirty = 1;
     // got to make sure res is correctly calculated because cx could
     // accidentally touch the numbers part
-    int res = editor_insert_row_char(conf, &conf->rows[conf->cy],
-                                     conf->cx - numline_offset, c);
+    int8_t res = editor_insert_row_char(conf, &conf->rows[conf->cy],
+                                        conf->cx - numline_offset, c);
     conf->cx++;
     return res;
 }
 
-int editor_delete_char(struct EditorConfig* conf) {
+int8_t editor_delete_char(struct EditorConfig* conf) {
     if (conf->numrows == 0) return EXIT_FAILURE;
 
-    int numline_offset = editor_row_numline_calculate(&conf->rows[conf->cy]);
+    int32_t numline_offset =
+        editor_row_numline_calculate(&conf->rows[conf->cy]);
 
     // make sure we're not at end of file or at beginning of first line
     if (conf->cy == conf->numrows ||
@@ -177,7 +178,7 @@ int editor_delete_char(struct EditorConfig* conf) {
         return EXIT_FAILURE;
 
     if (conf->cx > numline_offset) {
-        int at = conf->cx - numline_offset;
+        int32_t at = conf->cx - numline_offset;
         struct Row* row = &conf->rows[conf->cy];
         char currchar = row->chars[at - 1];
         // handle automated paranthesis removal
@@ -190,8 +191,9 @@ int editor_delete_char(struct EditorConfig* conf) {
             }
         }
 
-        int res = editor_delete_row_char(conf, &conf->rows[conf->cy], at - 1);
-        if (!conf->cx) conf->cx--;
+        int32_t res =
+            editor_delete_row_char(conf, &conf->rows[conf->cy], at - 1);
+        if (conf->cx != numline_offset) conf->cx--;
 
         return res;
     } else {
@@ -207,10 +209,10 @@ int editor_delete_char(struct EditorConfig* conf) {
     return EXIT_FAILURE;
 }
 
-int editor_rows_to_string(struct EditorConfig* conf, char** result,
-                          size_t* result_size) {
-    size_t total_size = 0;
-    for (size_t i = 0; i < (size_t)conf->numrows; i++) {
+int8_t editor_rows_to_string(struct EditorConfig* conf, char** result,
+                             int32_t* result_size) {
+    int32_t total_size = 0;
+    for (int32_t i = 0; i < conf->numrows; i++) {
         total_size += conf->rows[i].size;
 
         if (conf->rows[i].size == 0 ||
@@ -227,7 +229,7 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
 
     char* curr_ptr = file_data;
 
-    for (size_t i = 0; i < (size_t)conf->numrows; i++) {
+    for (int32_t i = 0; i < conf->numrows; i++) {
         memcpy(curr_ptr, conf->rows[i].chars, conf->rows[i].size);
         curr_ptr += conf->rows[i].size;
 
@@ -245,19 +247,19 @@ int editor_rows_to_string(struct EditorConfig* conf, char** result,
     return EXIT_SUCCESS;
 }
 
-int editor_string_to_rows(struct EditorConfig* conf, char* buffer) {
+int8_t editor_string_to_rows(struct EditorConfig* conf, char* buffer) {
     if (conf_destroy_rows(conf) == EXIT_FAILURE)
         die("conf destroy rows operation failed");
 
     char* ptr = buffer;
-    size_t index = 0;
+    int32_t index = 0;
 
     while (*ptr) {
         char* start = ptr;
 
         while (*ptr != '\n' && *ptr != '\0') ptr++;
 
-        size_t len = ptr - start;
+        int32_t len = ptr - start;
         char* buf = malloc(len + 1);
         if (!buf) die("buf malloc failed");
         memcpy(buf, start, len);
@@ -275,8 +277,8 @@ int editor_string_to_rows(struct EditorConfig* conf, char* buffer) {
     return EXIT_SUCCESS;
 }
 
-int editor_row_append_string(struct EditorConfig* conf, struct Row* row,
-                             char* s, size_t slen) {
+int8_t editor_row_append_string(struct EditorConfig* conf, struct Row* row,
+                                char* s, int32_t slen) {
     row->chars = realloc(row->chars, row->size + slen + 1);
     memcpy(&row->chars[row->size], s, slen);
     row->size += slen;
@@ -287,10 +289,10 @@ int editor_row_append_string(struct EditorConfig* conf, struct Row* row,
     return EXIT_SUCCESS;
 }
 
-int editor_update_cx_rx(struct Row* row, int cx) {
-    int rx = 0;
+int32_t editor_update_cx_rx(struct Row* row, int32_t cx) {
+    int32_t rx = 0;
 
-    for (size_t j = 0; j < (size_t)cx; j++) {
+    for (int32_t j = 0; j < cx; j++) {
         if (j < row->size) {
             if (row->chars[j] == '\t') {
                 rx += (TAB_SIZE - 1) - (rx % TAB_SIZE);
@@ -301,10 +303,10 @@ int editor_update_cx_rx(struct Row* row, int cx) {
     return rx;
 }
 
-int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
-                      size_t* len) {
-    int numline_offset = editor_row_numline_calculate(row);
-    int indent = row->indentation;  // modified indentation (if needed)
+int8_t editor_row_indent(struct EditorConfig* conf, struct Row* row,
+                         char** data, int32_t* len) {
+    int32_t numline_offset = editor_row_numline_calculate(row);
+    int32_t indent = row->indentation;  // modified indentation (if needed)
 
     if (conf->syntax) {
         char language_indent_start = conf->syntax->indent_start;
@@ -313,15 +315,15 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
         char buf_indent_start[2] = {language_indent_start, '\0'};
         char buf_indent_end[2] = {language_indent_end, '\0'};
 
-        uint8_t in_string = 0;
+        int8_t in_string = 0;
 
         // stack will work great to know if an indentation is essential
 
         Stack* s = malloc(sizeof(Stack));
         stack_create(s, NULL, free);
 
-        for (size_t i = 0; i < (size_t)conf->cx - numline_offset; i++) {
-            enum EditorKey c = row->chars[i];
+        for (int32_t i = 0; i < conf->cx - numline_offset; i++) {
+            int32_t c = row->chars[i];
 
             if (c == '"' && (i == 0 || row->chars[i - 1] != '\\')) {
                 in_string = !in_string;
@@ -372,7 +374,7 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
 
     indent = indent < 0 ? 0 : indent;  // verify it's not less than 0
 
-    int remainder_len = row->size - conf->cx + numline_offset;
+    int32_t remainder_len = row->size - conf->cx + numline_offset;
     char* remainder = &row->chars[conf->cx - numline_offset];
 
     char* newline = malloc(remainder_len + indent + 1);
@@ -388,11 +390,11 @@ int editor_row_indent(struct EditorConfig* conf, struct Row* row, char** data,
     return EXIT_SUCCESS;
 }
 
-int editor_update_rx_cx(struct Row* row, int rx) {
-    int curr_rx = 0;
-    int cx = 0;
+int32_t editor_update_rx_cx(struct Row* row, int32_t rx) {
+    int32_t curr_rx = 0;
+    int32_t cx = 0;
 
-    for (; cx < (int)row->size; cx++) {
+    for (; cx < row->size; cx++) {
         if (row->chars[cx] == '\t') {
             curr_rx += (TAB_SIZE - 1) - (curr_rx % TAB_SIZE);
         }
@@ -406,6 +408,6 @@ int editor_update_rx_cx(struct Row* row, int rx) {
 }
 
 // numline has a variable length so we need a respective function for it
-int editor_row_numline_calculate(const struct Row* row) {
+int32_t editor_row_numline_calculate(const struct Row* row) {
     return count_digits(row->idx + 1) + 1;
 }

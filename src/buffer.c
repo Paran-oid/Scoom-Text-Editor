@@ -5,7 +5,7 @@
 
 #include "core.h"
 
-uint8_t ab_append(struct ABuf *ab, const char *s, size_t slen) {
+int8_t ab_append(struct ABuf *ab, const char *s, int32_t slen) {
     char *new = realloc(ab->buf, ab->len + slen);
     if (!new) die("realloc failed, out of memory");
 
@@ -16,7 +16,7 @@ uint8_t ab_append(struct ABuf *ab, const char *s, size_t slen) {
     return EXIT_SUCCESS;
 }
 
-uint8_t ab_free(struct ABuf *ab) {
+int8_t ab_free(struct ABuf *ab) {
     free(ab->buf);
     ab->buf = NULL;
     return EXIT_SUCCESS;

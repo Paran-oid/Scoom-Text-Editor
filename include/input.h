@@ -45,18 +45,18 @@ enum EditorKey {
 
 };
 
-uint8_t editor_set_status_message(struct EditorConfig *conf,
-                                  const char *message, ...);
+int8_t editor_set_status_message(struct EditorConfig *conf, const char *message,
+                                 ...);
 char *editor_prompt(struct EditorConfig *conf, const char *prompt,
                     void (*callback)(struct EditorConfig *, char *, int32_t));
 
-uint8_t editor_cursor_ctrl(struct EditorConfig *conf, enum EditorKey key);
-uint8_t editor_cursor_move(struct EditorConfig *conf, enum EditorKey key);
-uint8_t editor_shift_select(struct EditorConfig *conf, enum EditorKey key);
+int8_t editor_cursor_ctrl(struct EditorConfig *conf, int32_t key);
+int8_t editor_cursor_move(struct EditorConfig *conf, int32_t key);
+int8_t editor_shift_select(struct EditorConfig *conf, int32_t key);
 
-uint8_t editor_read_key(struct EditorConfig *conf);
-uint8_t editor_process_key_press(struct EditorConfig *conf);
+int32_t editor_read_key(struct EditorConfig *conf);
+int8_t editor_process_key_press(struct EditorConfig *conf);
 
-uint8_t editor_insert_newline(struct EditorConfig *conf);
+int8_t editor_insert_newline(struct EditorConfig *conf);
 
 #endif

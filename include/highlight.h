@@ -24,14 +24,14 @@ struct EditorSyntax {
     char* multiline_comment_start;
     char* multiline_comment_end;
 
-    uint8_t flags;
+    int8_t flags;
 
     char indent_start;
     char indent_end;
 };
 
-uint8_t editor_syntax_highlight_select(struct EditorConfig* conf);
-uint8_t editor_syntax_to_color_row(enum EditorHighlight row);
-uint8_t editor_update_syntax(struct EditorConfig* conf, struct Row* row);
+int8_t editor_syntax_highlight_select(struct EditorConfig* conf);
+int8_t editor_syntax_to_color_row(enum EditorHighlight row);
+int8_t editor_update_syntax(struct EditorConfig* conf, struct Row* row);
 
 #endif

@@ -15,7 +15,7 @@
 #include "rows.h"
 #include "terminal.h"
 
-uint8_t snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
+int8_t snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
     snapshot->cx = conf->cx;
     snapshot->cy = conf->cy;
     snapshot->numrows = conf->numrows;
@@ -27,13 +27,13 @@ uint8_t snapshot_create(struct EditorConfig* conf, struct Snapshot* snapshot) {
     return EXIT_SUCCESS;
 }
 
-uint8_t snapshot_destroy(struct Snapshot* snapshot) {
+int8_t snapshot_destroy(struct Snapshot* snapshot) {
     if (!snapshot) die("empty sna(pshot passed");
     if (snapshot->text) free(snapshot->text);
     return EXIT_SUCCESS;
 }
 
-uint8_t editor_open(struct EditorConfig* conf, const char* path) {
+int8_t editor_open(struct EditorConfig* conf, const char* path) {
     free(conf->filepath);
     conf->filepath = strdup(path);
     if (!conf->filepath) die("strdup failed for path");
@@ -53,7 +53,7 @@ uint8_t editor_open(struct EditorConfig* conf, const char* path) {
 
     char* line = NULL;
     size_t line_cap = 0;  // size of buf basically
-    ssize_t line_len = 0;
+    int32_t line_len = 0;
     while ((line_len = getline(&line, &line_cap, fp)) != -1) {
         while (line_len > 0 &&
                (line[line_len - 1] == '\r' || line[line_len - 1] == '\n')) {
@@ -68,7 +68,7 @@ uint8_t editor_open(struct EditorConfig* conf, const char* path) {
 
     return EXIT_SUCCESS;
 }
-uint8_t editor_run(struct EditorConfig* conf) {
+int8_t editor_run(struct EditorConfig* conf) {
     g_conf = conf;
     conf_create(conf);
     term_create();
@@ -96,10 +96,10 @@ uint8_t editor_run(struct EditorConfig* conf) {
     return EXIT_SUCCESS;
 }
 
-uint8_t editor_extract_filename(struct EditorConfig* conf, char** filename) {
+int8_t editor_extract_filename(struct EditorConfig* conf, char** filename) {
     if (!conf->filepath) die("empty filepath in conf");
     char* file;
-    uint32_t count_slash =
+    int32_t count_slash =
         count_char(conf->filepath, strlen(conf->filepath), '/');
     if (count_slash) {
         file = strrchr(conf->filepath, '/');
@@ -112,12 +112,12 @@ uint8_t editor_extract_filename(struct EditorConfig* conf, char** filename) {
     return EXIT_SUCCESS;
 }
 
-uint8_t editor_destroy(struct EditorConfig* conf) {
+int8_t editor_destroy(struct EditorConfig* conf) {
     conf_destroy(conf);
     return EXIT_SUCCESS;
 }
 
-uint8_t editor_save(struct EditorConfig* conf) {
+int8_t editor_save(struct EditorConfig* conf) {
     if (!conf->filepath) {
         conf->filepath = editor_prompt(conf, "Save as: %s", NULL);
         if (!conf->filepath) {
@@ -129,7 +129,7 @@ uint8_t editor_save(struct EditorConfig* conf) {
     editor_syntax_highlight_select(conf);
 
     char* file_data;
-    size_t file_data_size;
+    int32_t file_data_size;
 
     if (editor_rows_to_string(conf, &file_data, &file_data_size) ==
         EXIT_FAILURE)
@@ -157,7 +157,7 @@ uint8_t editor_save(struct EditorConfig* conf) {
     return EXIT_SUCCESS;
 }
 
-uint8_t editor_undo(struct EditorConfig* conf) {
+int8_t editor_undo(struct EditorConfig* conf) {
     if (stack_size(conf->stack_undo) == 0) return EXIT_FAILURE;
 
     struct Snapshot *popped_snapshot, *current_snapshot;
@@ -175,7 +175,7 @@ uint8_t editor_undo(struct EditorConfig* conf) {
     return EXIT_SUCCESS;
 }
 
-uint8_t editor_redo(struct EditorConfig* conf) {
+int8_t editor_redo(struct EditorConfig* conf) {
     if (stack_size(conf->stack_redo) == 0) return EXIT_FAILURE;
 
     struct Snapshot *popped_snapshot, *current_snapshot;
@@ -193,7 +193,7 @@ uint8_t editor_redo(struct EditorConfig* conf) {
     return EXIT_SUCCESS;
 }
 
-uint8_t editor_copy(struct EditorConfig* conf) {
+int8_t editor_copy(struct EditorConfig* conf) {
     /*
             Sadly just linux compatible at the moment...
     */
@@ -203,7 +203,7 @@ uint8_t editor_copy(struct EditorConfig* conf) {
 
     struct EditorCursorSelect* sel = &conf->sel;
 
-    uint64_t bytes_size = 0;
+    int64_t bytes_size = 0;
 
     if (!sel->active) {
         struct Row* row = &conf->rows[conf->cy];
@@ -217,10 +217,10 @@ uint8_t editor_copy(struct EditorConfig* conf) {
             sel->end_row == -1 || sel->end_col == -1)
             die("selected text was expected");
 
-        uint32_t i = sel->start_row;
+        int32_t i = sel->start_row;
         struct Row* row = &conf->rows[i];
 
-        uint32_t numline_offset = editor_row_numline_calculate(row);
+        int32_t numline_offset = editor_row_numline_calculate(row);
 
         int32_t sel_start_col_cx =
             editor_update_rx_cx(row, sel->start_row - numline_offset);
@@ -283,24 +283,25 @@ Function is based on this logic:
     */
 
 // Step 1 and 2 were already done, we need to just care about the rest
-// We decrement by -1 for each copy_buffer element because each has \n.
+// We always negate by 1 for each copy_buffer element because each has \n.
 
-static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
-                               size_t copy_buffer_size) {
+static int32_t editor_paste_buffer(struct EditorConfig* conf,
+                                   char** copy_buffer,
+                                   int32_t copy_buffer_size) {
     if (copy_buffer_size == 0) {
         return -1;
     }
 
-    size_t total_size = 0;
+    int32_t total_size = 0;
 
     // Step 3:
 
     struct Row* row = &conf->rows[conf->cy];
-    int numline_offset = editor_row_numline_calculate(row);
-    int cursor_offset = conf->cx - numline_offset;
+    int32_t numline_offset = editor_row_numline_calculate(row);
+    int32_t cursor_offset = conf->cx - numline_offset;
 
     char* first_copy_buffer = copy_buffer[0];
-    size_t first_buffer_size = strlen(first_copy_buffer);
+    int32_t first_buffer_size = strlen(first_copy_buffer);
 
     // just get rid of any existing \n
     if (strchr(first_copy_buffer, '\n')) first_buffer_size--;
@@ -310,7 +311,7 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
     if (!str_remaining || !str_appended)
         die("malloc/strdup failed for str_append/str_remaining");
 
-    size_t str_remaining_size = strlen(str_remaining);
+    int32_t str_remaining_size = strlen(str_remaining);
 
     memcpy(str_appended, row->chars, cursor_offset);
     memcpy(str_appended + cursor_offset, first_copy_buffer, first_buffer_size);
@@ -333,7 +334,7 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
                           first_buffer_size + cursor_offset);
         // Step 4:
         if (copy_buffer_size > 1) {
-            for (size_t i = 1; i < copy_buffer_size - 1; i++) {
+            for (int32_t i = 1; i < copy_buffer_size - 1; i++) {
                 conf->cy++;
                 editor_insert_row(conf, conf->cy, copy_buffer[i],
                                   strlen(copy_buffer[i]) - 1);
@@ -346,7 +347,7 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
 
         row = &conf->rows[conf->cy];
         char* last_copy_buffer = copy_buffer[copy_buffer_size - 1];
-        size_t last_row_size = strlen(last_copy_buffer) - 1;
+        int32_t last_row_size = strlen(last_copy_buffer) - 1;
         last_copy_buffer[last_row_size] = '\0';  // replace \n with \0
 
         char* last_modified_row = strdup(last_copy_buffer);
@@ -367,22 +368,22 @@ static int editor_paste_buffer(struct EditorConfig* conf, char** copy_buffer,
     return total_size;
 }
 
-int editor_paste(struct EditorConfig* conf) {
+int8_t editor_paste(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard -o", "r");
     if (!pipe) die("paste pipe failed to initialize");
 
     char** copy_buffer = NULL;
-    size_t copy_buffer_size = 0;
+    int32_t copy_buffer_size = 0;
 
     char* content_pasted = NULL;
     size_t size = 0;
-    ssize_t len = 0;
+    int32_t len = 0;
     while ((len = getline(&content_pasted, &size, pipe)) != -1) {
         copy_buffer =
             realloc(copy_buffer, sizeof(char*) * (copy_buffer_size + 1));
         copy_buffer[copy_buffer_size] = strdup(content_pasted);
         if (!copy_buffer || !copy_buffer[copy_buffer_size]) {
-            for (size_t i = 0; i < copy_buffer_size; i++) {
+            for (int32_t i = 0; i < copy_buffer_size; i++) {
                 free(copy_buffer[i]);
             }
             pclose(pipe);
@@ -398,7 +399,7 @@ int editor_paste(struct EditorConfig* conf) {
         EXIT_FAILURE;
     if (conf->cy == conf->numrows) editor_insert_row(conf, conf->cy, "", 0);
 
-    int total_bytes_pasted =
+    int32_t total_bytes_pasted =
         editor_paste_buffer(conf, copy_buffer, copy_buffer_size);
 
     if (total_bytes_pasted > -1)
@@ -407,7 +408,7 @@ int editor_paste(struct EditorConfig* conf) {
     else
         editor_set_status_message(conf, "error encountered while pasting...");
 
-    for (size_t i = 0; i < copy_buffer_size; i++) free(copy_buffer[i]);
+    for (int32_t i = 0; i < copy_buffer_size; i++) free(copy_buffer[i]);
 
     free(copy_buffer);
     free(content_pasted);
@@ -415,7 +416,7 @@ int editor_paste(struct EditorConfig* conf) {
     return EXIT_SUCCESS;
 }
 
-int editor_cut(struct EditorConfig* conf) {
+int8_t editor_cut(struct EditorConfig* conf) {
     FILE* pipe = popen("xclip -selection clipboard", "w");
     if (!pipe) die("pipe failed to be opened");
 
@@ -425,7 +426,7 @@ int editor_cut(struct EditorConfig* conf) {
         die("writing to cut pipe failed");
     }
 
-    size_t rowsize = row->size;
+    int32_t rowsize = row->size;
 
     if (conf->cy == 0) {
         if (conf->rows[conf->cy].size == 0) {
@@ -450,16 +451,16 @@ int editor_cut(struct EditorConfig* conf) {
 }
 
 static void editor_find_callback(struct EditorConfig* conf, char* query,
-                                 int key) {
+                                 int32_t key) {
     /*
-       direction: 1(forward) / -1(backward)
+       direction(forward) / -1(backward)
        last_match: -1(not found) / 1(found)
     */
 
-    static int last_match = -1;
-    static int direction = 1;
+    static int32_t last_match = -1;
+    static int8_t direction = 1;
 
-    static int saved_hl_line;
+    static int32_t saved_hl_line;
     static char* saved_hl = NULL;
 
     if (saved_hl) {
@@ -486,9 +487,9 @@ static void editor_find_callback(struct EditorConfig* conf, char* query,
 
     if (last_match == -1) direction = 1;
     // index of current row
-    int current = last_match;
+    int8_t current = last_match;
 
-    for (size_t i = 0; i < (size_t)conf->numrows; i++) {
+    for (int32_t i = 0; i < conf->numrows; i++) {
         current += direction;
         if (current < 0)
             current = conf->numrows - 1;
@@ -514,9 +515,9 @@ static void editor_find_callback(struct EditorConfig* conf, char* query,
     }
 }
 
-int editor_find(struct EditorConfig* conf) {
-    int saved_cx = conf->cx, saved_cy = conf->cy, saved_rowoff = conf->rowoff,
-        saved_coloff = conf->coloff;
+int8_t editor_find(struct EditorConfig* conf) {
+    int32_t saved_cx = conf->cx, saved_cy = conf->cy,
+            saved_rowoff = conf->rowoff, saved_coloff = conf->coloff;
 
     char* query = editor_prompt(conf, "Search: %s (use ESC/Arrow/Enter)",
                                 editor_find_callback);

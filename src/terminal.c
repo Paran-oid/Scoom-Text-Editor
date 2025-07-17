@@ -17,7 +17,7 @@
 
 struct termios orig_termios;
 
-static void term_size_flag_update(int sig) {
+static void term_size_flag_update(int32_t sig) {
     (void)sig;
     if (g_conf) g_conf->flags.resize_needed = 1;
 }
@@ -80,8 +80,8 @@ void term_create(void) {
 
     sigaction(SIGWINCH, &sa, NULL);
 
-    int signals[] = {SIGSEGV, SIGINT, SIGTERM};
-    for (int i = 0; i < 3; ++i) {
+    int32_t signals[] = {SIGSEGV, SIGINT, SIGTERM};
+    for (int32_t i = 0; i < 3; ++i) {
         struct sigaction sa_exit;
         sa_exit.sa_handler = term_exit;
         sigemptyset(&sa_exit.sa_mask);
@@ -100,12 +100,13 @@ void term_create(void) {
 #endif
 }
 
-void term_exit(int sig __attribute__((unused))) {
+void term_exit(int32_t sig __attribute__((unused))) {
     cleanup();
     exit(EXIT_SUCCESS);
 }
 
-int term_get_window_size(struct EditorConfig* conf, int* rows, int* cols) {
+int8_t term_get_window_size(struct EditorConfig* conf, int32_t* rows,
+                            int32_t* cols) {
     struct winsize ws;
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
         // idea:
@@ -125,7 +126,7 @@ int term_get_window_size(struct EditorConfig* conf, int* rows, int* cols) {
     }
 }
 
-int term_get_cursor_position(int* rows, int* cols) {
+int8_t term_get_cursor_position(int32_t* rows, int32_t* cols) {
     size_t i = 0;
     char buf[32];
     // Command from host (\x1b[6n) – Please report active position (using a
