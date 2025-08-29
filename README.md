@@ -2,6 +2,8 @@
 
 Scoom Text Editor is a simple text editor written in C, inspired by the Kilo tutorial. This project was created to deepen understanding of terminal I/O, dynamic memory allocation, and raw mode handling in Unix systems.
 
+<img width="1842" height="306" alt="image" src="https://github.com/user-attachments/assets/3ad385bb-49d2-4fac-bd6d-e2ff0fe61e01" />
+
 ## Features
 
 - Core editing functionality based on the Kilo text editor guide
